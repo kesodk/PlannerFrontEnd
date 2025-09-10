@@ -1,0 +1,34 @@
+/* Simple centered notifications - no backdrop here */
+.mantine-Notifications-root {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: auto !important;
+  max-width: 500px !important;
+  z-index: 9999 !important;
+}
+
+/* Make notifications bigger and clear */
+.mantine-Notification-root {
+  transform: scale(1.4) !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6) !important;
+  border-radius: 12px !important;
+  background: white !important;
+  border: 2px solid rgba(255, 255, 255, 0.9) !important;
+  margin-bottom: 1rem !important;
+}
+
+/* Programmatic backdrop class */
+.notification-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(5px);
+  z-index: 9998;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
