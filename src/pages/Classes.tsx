@@ -1,113 +1,73 @@
-import { Container, Title, Group, Button, Grid, Card, Text, Badge, Stack, Progress } from '@mantine/core'
-import { IconPlus, IconUsers, IconCalendar } from '@tabler/icons-react'
-
-const mockClasses = [
-  { 
-    id: 1, 
-    name: 'Frontend Development 2024', 
-    students: 24, 
-    maxStudents: 30, 
-    startDate: '2024-02-01',
-    endDate: '2024-12-15',
-    status: 'Aktiv',
-    instructor: 'Lars Andersen'
-  },
-  { 
-    id: 2, 
-    name: 'Backend Development 2024', 
-    students: 18, 
-    maxStudents: 25, 
-    startDate: '2024-01-15',
-    endDate: '2024-11-30',
-    status: 'Aktiv',
-    instructor: 'Marie Jensen'
-  },
-  { 
-    id: 3, 
-    name: 'Fullstack Development 2024', 
-    students: 22, 
-    maxStudents: 25, 
-    startDate: '2024-03-01',
-    endDate: '2025-01-31',
-    status: 'Aktiv',
-    instructor: 'Peter Nielsen'
-  },
-  { 
-    id: 4, 
-    name: 'Frontend Development 2023', 
-    students: 28, 
-    maxStudents: 30, 
-    startDate: '2023-02-01',
-    endDate: '2023-12-15',
-    status: 'Afsluttet',
-    instructor: 'Anna Hansen'
-  },
-]
+import { Container, Title, Stack, Card, Text, Group, Badge, ThemeIcon, Alert } from '@mantine/core'
+import { IconSchool, IconCalendar, IconUsers, IconInfoCircle } from '@tabler/icons-react'
 
 export function Classes() {
   return (
-    <Container size="xl">
-      <Group justify="space-between" mb="lg">
-        <Title order={1}>Hold</Title>
-        <Button leftSection={<IconPlus size={16} />}>
-          Opret nyt hold
-        </Button>
-      </Group>
+    <Container size="md">
+      <Stack align="center" gap="xl" py="xl">
+        <ThemeIcon size={120} radius="xl" variant="light" color="blue">
+          <IconSchool size={60} />
+        </ThemeIcon>
+        
+        <Stack align="center" gap="sm">
+          <Title order={1} ta="center">Hold administration</Title>
+          <Text size="lg" c="dimmed" ta="center">
+            Denne funktionalitet er under udvikling
+          </Text>
+        </Stack>
 
-      <Grid>
-        {mockClasses.map((classItem) => (
-          <Grid.Col span={{ base: 12, md: 6, lg: 4 }} key={classItem.id}>
-            <Card shadow="sm" padding="lg" radius="md" withBorder h={280}>
-              <Stack justify="space-between" h="100%">
-                <div>
-                  <Group justify="space-between" mb="xs">
-                    <Text fw={500} size="lg" lineClamp={2}>
-                      {classItem.name}
-                    </Text>
-                    <Badge 
-                      color={classItem.status === 'Aktiv' ? 'green' : 'gray'}
-                      variant="light"
-                    >
-                      {classItem.status}
-                    </Badge>
-                  </Group>
+        <Alert 
+          icon={<IconInfoCircle size={16} />} 
+          title="Kommer snart!" 
+          color="blue"
+          radius="md"
+          style={{ maxWidth: 500 }}
+        >
+          Hold administration systemet er planlagt til at omfatte:
+          <br />• Oprettelse og redigering af hold
+          <br />• Tilmelding af elever til hold  
+          <br />• Oversigt over holdaktiviteter
+          <br />• Integration med fremmøderegistrering
+        </Alert>
 
-                  <Group mb="md">
-                    <Group gap="xs">
-                      <IconUsers size={16} />
-                      <Text size="sm" c="dimmed">
-                        {classItem.students}/{classItem.maxStudents} elever
-                      </Text>
-                    </Group>
-                  </Group>
-
-                  <Progress 
-                    value={(classItem.students / classItem.maxStudents) * 100} 
-                    size="sm" 
-                    mb="md"
-                    color={classItem.students === classItem.maxStudents ? 'red' : 'blue'}
-                  />
-
-                  <Group gap="xs" mb="xs">
-                    <IconCalendar size={16} />
-                    <Text size="sm" c="dimmed">
-                      {new Date(classItem.startDate).toLocaleDateString('da-DK')} - {new Date(classItem.endDate).toLocaleDateString('da-DK')}
-                    </Text>
-                  </Group>
-
-                  <Text size="sm" c="dimmed">
-                    Instruktør: {classItem.instructor}
-                  </Text>
-                </div>
-
-                <Button variant="light" fullWidth mt="md">
-                  Se detaljer
-                </Button>
+        <Card withBorder padding="xl" radius="md" style={{ maxWidth: 600 }}>
+          <Stack gap="md">
+            <Group justify="center">
+              <Badge size="lg" variant="light" color="blue">Fase 2</Badge>
+            </Group>
+            
+            <Text ta="center" fw={500}>
+              I mellemtiden kan du teste elevadministrationen
+            </Text>
+            
+            <Group justify="space-around" mt="md">
+              <Stack align="center" gap="xs">
+                <ThemeIcon size={50} radius="md" variant="light" color="green">
+                  <IconUsers size={24} />
+                </ThemeIcon>
+                <Text size="sm" fw={500}>Elevadministration</Text>
+                <Badge size="sm" color="green">Klar</Badge>
               </Stack>
-            </Card>
-          </Grid.Col>
-        ))}
-      </Grid>
+              
+              <Stack align="center" gap="xs">
+                <ThemeIcon size={50} radius="md" variant="light" color="gray">
+                  <IconSchool size={24} />
+                </ThemeIcon>
+                <Text size="sm" fw={500}>Hold</Text>
+                <Badge size="sm" color="gray">Kommer snart</Badge>
+              </Stack>
+              
+              <Stack align="center" gap="xs">
+                <ThemeIcon size={50} radius="md" variant="light" color="gray">
+                  <IconCalendar size={24} />
+                </ThemeIcon>
+                <Text size="sm" fw={500}>Fremmøde</Text>
+                <Badge size="sm" color="gray">Kommer snart</Badge>
+              </Stack>
+            </Group>
+          </Stack>
+        </Card>
+      </Stack>
     </Container>
   )
 }
