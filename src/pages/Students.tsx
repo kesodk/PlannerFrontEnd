@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Container, Title, Group, Button, TextInput, ActionIcon, Badge, Table, Card, Text, Stack, Alert, UnstyledButton } from '@mantine/core'
+import { Container, Title, Group, Button, TextInput, ActionIcon, Badge, Table, Card, Text, Alert, UnstyledButton, useMantineColorScheme } from '@mantine/core'
 import { IconPlus, IconSearch, IconEdit, IconTrash, IconRefresh, IconMapPin, IconChevronUp, IconChevronDown, IconSelector, IconEye } from '@tabler/icons-react'
 import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
@@ -11,6 +11,7 @@ import type { Student } from '../types/Student'
 import type { StudentFormData } from '../schemas/studentSchema'
 
 export function Students() {
+  const { colorScheme } = useMantineColorScheme()
   const [students, setStudents] = useState<Student[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [modalOpened, setModalOpened] = useState(false)
@@ -62,13 +63,40 @@ export function Students() {
     return 0
   })
 
-  const filteredStudents = sortedStudents.filter(student =>
-    student.navn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (student.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-    student.afdeling.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.kommune.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (student.vejlederNavn?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-  )
+  const filteredStudents = sortedStudents.filter(student => {
+    const searchLower = searchTerm.toLowerCase()
+    
+    return (
+      // Grundlæggende elev information
+      student.navn.toLowerCase().includes(searchLower) ||
+      (student.fødselsdato?.toLowerCase() || '').includes(searchLower) ||
+      (student.cpr?.toLowerCase() || '').includes(searchLower) ||
+      (student.adresse?.toLowerCase() || '').includes(searchLower) ||
+      (student.telefonnr?.toLowerCase() || '').includes(searchLower) ||
+      (student.email?.toLowerCase() || '').includes(searchLower) ||
+      
+      // Forældreoplysninger
+      (student.forældreNavn?.toLowerCase() || '').includes(searchLower) ||
+      (student.forældreTelefon?.toLowerCase() || '').includes(searchLower) ||
+      (student.forældreAdresse?.toLowerCase() || '').includes(searchLower) ||
+      (student.forældreEmail?.toLowerCase() || '').includes(searchLower) ||
+      
+      // Uddannelse information
+      student.afdeling.toLowerCase().includes(searchLower) ||
+      (student.kursistnr?.toLowerCase() || '').includes(searchLower) ||
+      student.kommune.toLowerCase().includes(searchLower) ||
+      student.lovgrundlag.toLowerCase().includes(searchLower) ||
+      student.spor.toLowerCase().includes(searchLower) ||
+      student.status.toLowerCase().includes(searchLower) ||
+      (student.startdato?.toLowerCase() || '').includes(searchLower) ||
+      (student.slutdato?.toLowerCase() || '').includes(searchLower) ||
+      
+      // Vejlederoplysninger
+      (student.vejlederNavn?.toLowerCase() || '').includes(searchLower) ||
+      (student.vejlederTlf?.toLowerCase() || '').includes(searchLower) ||
+      (student.vejlederEmail?.toLowerCase() || '').includes(searchLower)
+    )
+  })
 
   const handleCreateStudent = () => {
     setEditingStudent(null)
@@ -160,11 +188,11 @@ export function Students() {
 
       <Group mb="md" justify="space-between">
         <TextInput
-          placeholder="Søg efter elever..."
+          placeholder="Søg i alle elev-informationer (navn, forældre, vejleder, adresser...)"
           leftSection={<IconSearch size={16} />}
           value={searchTerm}
           onChange={(event) => setSearchTerm(event.currentTarget.value)}
-          style={{ flex: 1, maxWidth: 400 }}
+          style={{ flex: 1, maxWidth: 500 }}
         />
         <Group>
           {sortBy && (
@@ -230,7 +258,7 @@ export function Students() {
       {filteredStudents.length > 0 && (
         <Card withBorder>
           <Title order={3} mb="md">Alle elever</Title>
-          <Table striped highlightOnHover>
+          <Table>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>
@@ -240,21 +268,39 @@ export function Students() {
                   </UnstyledButton>
                 </Table.Th>
                 <Table.Th>
+                  <UnstyledButton onClick={() => handleSort('kommune')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Text fw={500}>Kommune</Text>
+                    {getSortIcon('kommune')}
+                  </UnstyledButton>
+                </Table.Th>
+                <Table.Th>
                   <UnstyledButton onClick={() => handleSort('email')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Text fw={500}>Email</Text>
                     {getSortIcon('email')}
                   </UnstyledButton>
                 </Table.Th>
                 <Table.Th>
-                  <UnstyledButton onClick={() => handleSort('telefonnr')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Text fw={500}>Telefon</Text>
-                    {getSortIcon('telefonnr')}
-                  </UnstyledButton>
-                </Table.Th>
-                <Table.Th>
                   <UnstyledButton onClick={() => handleSort('afdeling')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Text fw={500}>Afdeling</Text>
                     {getSortIcon('afdeling')}
+                  </UnstyledButton>
+                </Table.Th>
+                <Table.Th>
+                  <UnstyledButton onClick={() => handleSort('spor')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Text fw={500}>Spor</Text>
+                    {getSortIcon('spor')}
+                  </UnstyledButton>
+                </Table.Th>
+                <Table.Th>
+                  <UnstyledButton onClick={() => handleSort('startdato')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Text fw={500}>Startdato</Text>
+                    {getSortIcon('startdato')}
+                  </UnstyledButton>
+                </Table.Th>
+                <Table.Th>
+                  <UnstyledButton onClick={() => handleSort('slutdato')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Text fw={500}>Slutdato</Text>
+                    {getSortIcon('slutdato')}
                   </UnstyledButton>
                 </Table.Th>
                 <Table.Th>
@@ -267,40 +313,69 @@ export function Students() {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {filteredStudents.map((student) => (
+              {filteredStudents.map((student, index) => (
                 <Table.Tr 
                   key={student.id}
-                  style={{ cursor: 'pointer' }}
+                  style={{ 
+                    cursor: 'pointer',
+                    backgroundColor: index % 2 === 0 
+                      ? 'transparent'
+                      : colorScheme === 'dark'
+                        ? 'var(--mantine-color-dark-7)'
+                        : 'var(--mantine-color-gray-0)',
+                    transition: 'background-color 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = colorScheme === 'dark'
+                      ? 'var(--mantine-color-dark-5)'
+                      : 'var(--mantine-color-blue-0)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = index % 2 === 0 
+                      ? 'transparent'
+                      : colorScheme === 'dark'
+                        ? 'var(--mantine-color-dark-7)'
+                        : 'var(--mantine-color-gray-0)'
+                  }}
                   onClick={() => handleViewStudent(student)}
                 >
                   <Table.Td>
-                    <Stack gap="xs">
-                      <Text fw={500}>{student.navn}</Text>
-                      <Group gap="xs" align="center">
-                        <IconMapPin size={14} color="#6c757d" />
-                        <Text size="sm" c="dimmed">{student.kommune}</Text>
-                      </Group>
-                    </Stack>
+                    <Text fw={500}>{student.navn}</Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Group gap="xs" align="center">
+                      <IconMapPin size={14} color="#6c757d" />
+                      <Text size="sm">{student.kommune}</Text>
+                    </Group>
                   </Table.Td>
                   <Table.Td>{student.email || '-'}</Table.Td>
-                  <Table.Td>{student.telefonnr || '-'}</Table.Td>
                   <Table.Td>
-                    <Stack gap="xs">
-                      <Text size="sm">{student.afdeling}</Text>
-                      <Badge 
-                        size="xs" 
-                        style={{ 
-                          backgroundColor: student.spor === 'AspIT' ? 'rgb(25, 69, 65)' : 
-                                         student.spor === 'AspIN' ? 'rgb(105, 214, 199)' : 
-                                         '#e9ecef',
-                          color: student.spor === 'AspIT' ? 'white' : 
-                                student.spor === 'AspIN' ? 'rgb(25, 69, 65)' : 
-                                '#495057'
-                        }}
-                      >
-                        {student.spor}
-                      </Badge>
-                    </Stack>
+                    <Text size="sm">{student.afdeling}</Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Badge 
+                      size="sm" 
+                      style={{ 
+                        backgroundColor: student.spor === 'AspIT' ? 'rgb(25, 69, 65)' : 
+                                       student.spor === 'AspIN' ? 'rgb(105, 214, 199)' : 
+                                       '#e9ecef',
+                        color: student.spor === 'AspIT' ? 'white' : 
+                              student.spor === 'AspIN' ? 'rgb(25, 69, 65)' : 
+                              '#495057'
+                      }}
+                    >
+                      {student.spor}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm">
+                      {student.startdato ? new Date(student.startdato).toLocaleDateString('da-DK') : '-'}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm">
+                      {student.slutdato ? new Date(student.slutdato).toLocaleDateString('da-DK') : '-'}
+                    </Text>
                   </Table.Td>
                   <Table.Td>
                     <Badge 
@@ -318,6 +393,24 @@ export function Students() {
                         color="gray"
                         onClick={() => handleViewStudent(student)}
                         title="Vis elev"
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)'
+                          e.currentTarget.style.boxShadow = colorScheme === 'dark' 
+                            ? '0 2px 8px rgba(255, 255, 255, 0.1)' 
+                            : '0 2px 8px rgba(0, 0, 0, 0.15)'
+                          e.currentTarget.style.backgroundColor = colorScheme === 'dark'
+                            ? 'var(--mantine-color-gray-8)'
+                            : 'var(--mantine-color-gray-1)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)'
+                          e.currentTarget.style.boxShadow = 'none'
+                          e.currentTarget.style.backgroundColor = ''
+                        }}
+                        style={{
+                          transition: 'all 0.2s ease',
+                          cursor: 'pointer'
+                        }}
                       >
                         <IconEye size={16} />
                       </ActionIcon>
@@ -327,6 +420,24 @@ export function Students() {
                         color="blue"
                         onClick={() => handleEditStudent(student)}
                         title="Rediger elev"
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)'
+                          e.currentTarget.style.boxShadow = colorScheme === 'dark'
+                            ? '0 2px 8px rgba(34, 139, 230, 0.4)'
+                            : '0 2px 8px rgba(34, 139, 230, 0.3)'
+                          e.currentTarget.style.backgroundColor = colorScheme === 'dark'
+                            ? 'var(--mantine-color-blue-8)'
+                            : 'var(--mantine-color-blue-1)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)'
+                          e.currentTarget.style.boxShadow = 'none'
+                          e.currentTarget.style.backgroundColor = ''
+                        }}
+                        style={{
+                          transition: 'all 0.2s ease',
+                          cursor: 'pointer'
+                        }}
                       >
                         <IconEdit size={16} />
                       </ActionIcon>
@@ -336,6 +447,24 @@ export function Students() {
                         color="red"
                         onClick={() => handleDeleteStudent(student.id)}
                         title="Slet elev"
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)'
+                          e.currentTarget.style.boxShadow = colorScheme === 'dark'
+                            ? '0 2px 8px rgba(250, 82, 82, 0.4)'
+                            : '0 2px 8px rgba(250, 82, 82, 0.3)'
+                          e.currentTarget.style.backgroundColor = colorScheme === 'dark'
+                            ? 'var(--mantine-color-red-8)'
+                            : 'var(--mantine-color-red-1)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)'
+                          e.currentTarget.style.boxShadow = 'none'
+                          e.currentTarget.style.backgroundColor = ''
+                        }}
+                        style={{
+                          transition: 'all 0.2s ease',
+                          cursor: 'pointer'
+                        }}
                       >
                         <IconTrash size={16} />
                       </ActionIcon>
