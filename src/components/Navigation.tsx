@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { Group, Code, ScrollArea, Stack, Text } from '@mantine/core'
 import { IconUsers, IconSchool, IconCalendarCheck, IconDashboard } from '@tabler/icons-react'
+import { ThemeToggle } from './ThemeToggle'
 import classes from './Navigation.module.css'
 
 const mockdata = [
@@ -31,7 +32,10 @@ export function Navigation() {
           <Text size="lg" fw={500}>
             Student Admin
           </Text>
-          <Code fw={700}>v1.0.0</Code>
+          <Group gap="xs">
+            <ThemeToggle />
+            <Code fw={700}>v1.0.0</Code>
+          </Group>
         </Group>
         <ScrollArea className={classes.links}>
           <div className={classes.linksInner}>

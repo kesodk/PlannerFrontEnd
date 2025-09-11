@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Container, Title, Group, Button, TextInput, ActionIcon, Badge, Table, Card, Text, Stack } from '@mantine/core'
-import { IconPlus, IconSearch, IconEdit, IconTrash, IconRefresh, IconMapPin } from '@tabler/icons-react'
+import { Container, Title, Group, Button, TextInput, ActionIcon, Badge, Table, Card, Text, Stack, Alert, UnstyledButton } from '@mantine/core'
+import { IconPlus, IconSearch, IconEdit, IconTrash, IconRefresh, IconMapPin, IconChevronUp, IconChevronDown, IconSelector, IconEye } from '@tabler/icons-react'
 import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
 import { StudentForm } from '../components/StudentForm'
+import { StudentViewModal } from '../components/StudentViewModal'
 import { mockStudents as initialMockStudents } from '../data/mockStudents'
 import { studentStorage } from '../services/studentStorage'
 import type { Student } from '../types/Student'
@@ -13,7 +14,11 @@ export function Students() {
   const [students, setStudents] = useState<Student[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [modalOpened, setModalOpened] = useState(false)
+  const [viewModalOpened, setViewModalOpened] = useState(false)
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
+  const [viewingStudent, setViewingStudent] = useState<Student | null>(null)
+  const [sortBy, setSortBy] = useState<keyof Student | null>(null)
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
   // Load students from localStorage on component mount
   useEffect(() => {
@@ -21,7 +26,43 @@ export function Students() {
     setStudents(storedStudents)
   }, [])
 
-  const filteredStudents = students.filter(student =>
+  const handleSort = (field: keyof Student) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(field)
+      setSortOrder('asc')
+    }
+  }
+
+  const getSortIcon = (field: keyof Student) => {
+    if (sortBy !== field) {
+      return <IconSelector size={14} />
+    }
+    return sortOrder === 'asc' ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />
+  }
+
+  const sortedStudents = [...students].sort((a, b) => {
+    if (!sortBy) return 0
+    
+    const aValue = a[sortBy]
+    const bValue = b[sortBy]
+    
+    // Handle null/undefined values
+    if (aValue == null && bValue == null) return 0
+    if (aValue == null) return sortOrder === 'asc' ? 1 : -1
+    if (bValue == null) return sortOrder === 'asc' ? -1 : 1
+    
+    // Convert to string for comparison
+    const aStr = String(aValue).toLowerCase()
+    const bStr = String(bValue).toLowerCase()
+    
+    if (aStr < bStr) return sortOrder === 'asc' ? -1 : 1
+    if (aStr > bStr) return sortOrder === 'asc' ? 1 : -1
+    return 0
+  })
+
+  const filteredStudents = sortedStudents.filter(student =>
     student.navn.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (student.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
     student.afdeling.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -37,6 +78,11 @@ export function Students() {
   const handleEditStudent = (student: Student) => {
     setEditingStudent(student)
     setModalOpened(true)
+  }
+
+  const handleViewStudent = (student: Student) => {
+    setViewingStudent(student)
+    setViewModalOpened(true)
   }
 
   const handleDeleteStudent = (id: number) => {
@@ -120,44 +166,64 @@ export function Students() {
           onChange={(event) => setSearchTerm(event.currentTarget.value)}
           style={{ flex: 1, maxWidth: 400 }}
         />
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => {
-            modals.openConfirmModal({
-              title: 'Nulstil data',
-              children: 'Dette vil slette alle lokale data og genindlæse testdata. Er du sikker?',
-              labels: { confirm: 'Nulstil', cancel: 'Annuller' },
-              confirmProps: { color: 'red' },
-              onConfirm: () => {
-                studentStorage.clearAll()
-                const freshData = studentStorage.initializeWithMockData(initialMockStudents)
-                setStudents(freshData)
-                notifications.show({
-                  title: 'Data nulstillet',
-                  message: 'Alle data er blevet nulstillet til testdata',
-                  color: 'blue'
-                })
-              },
-            })
-          }}
-        >
-          Nulstil testdata
-        </Button>
+        <Group>
+          {sortBy && (
+            <Button 
+              variant="subtle" 
+              size="sm"
+              onClick={() => {
+                setSortBy(null)
+                setSortOrder('asc')
+              }}
+            >
+              Nulstil sortering
+            </Button>
+          )}
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => {
+              modals.openConfirmModal({
+                title: 'Nulstil data',
+                children: 'Dette vil slette alle lokale data og genindlæse testdata. Er du sikker?',
+                labels: { confirm: 'Nulstil', cancel: 'Annuller' },
+                confirmProps: { color: 'red' },
+                onConfirm: () => {
+                  studentStorage.clearAll()
+                  const freshData = studentStorage.initializeWithMockData(initialMockStudents)
+                  setStudents(freshData)
+                  notifications.show({
+                    title: 'Data nulstillet',
+                    message: 'Alle data er blevet nulstillet til testdata',
+                    color: 'blue'
+                  })
+                },
+              })
+            }}
+          >
+            Nulstil testdata
+          </Button>
+        </Group>
       </Group>
 
       {/* No students message */}
       {students.length === 0 && (
-        <div style={{ padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', marginBottom: '16px' }}>
-          <p><strong>Ingen elever fundet.</strong></p>
-          <p>Prøv at klikke på "Nulstil testdata" knappen ovenfor for at indlæse test elever.</p>
-        </div>
+        <Alert variant="light" color="gray" mb="md">
+          <Text fw={500}>Ingen elever fundet.</Text>
+          <Text size="sm">Prøv at klikke på "Nulstil testdata" knappen ovenfor for at indlæse test elever.</Text>
+        </Alert>
       )}
 
       {students.length > 0 && (
-        <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#e3f2fd', borderRadius: '8px' }}>
-          <p><strong>Fundet {filteredStudents.length} elever</strong> {searchTerm && `(filtreret fra ${students.length} total)`}</p>
-        </div>
+        <Alert variant="light" color="blue" mb="md">
+          <Text fw={500}>Fundet {filteredStudents.length} elever</Text>
+          {searchTerm && <Text size="sm">Filtreret fra {students.length} elever total</Text>}
+          {sortBy && (
+            <Text size="sm">
+              Sorteret efter {sortBy} ({sortOrder === 'asc' ? 'stigende' : 'faldende'})
+            </Text>
+          )}
+        </Alert>
       )}
 
       {/* Mantine tabel - den pålidelige løsning */}
@@ -167,17 +233,46 @@ export function Students() {
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Navn</Table.Th>
-                <Table.Th>Email</Table.Th>
-                <Table.Th>Telefon</Table.Th>
-                <Table.Th>Afdeling</Table.Th>
-                <Table.Th>Status</Table.Th>
+                <Table.Th>
+                  <UnstyledButton onClick={() => handleSort('navn')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Text fw={500}>Navn</Text>
+                    {getSortIcon('navn')}
+                  </UnstyledButton>
+                </Table.Th>
+                <Table.Th>
+                  <UnstyledButton onClick={() => handleSort('email')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Text fw={500}>Email</Text>
+                    {getSortIcon('email')}
+                  </UnstyledButton>
+                </Table.Th>
+                <Table.Th>
+                  <UnstyledButton onClick={() => handleSort('telefonnr')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Text fw={500}>Telefon</Text>
+                    {getSortIcon('telefonnr')}
+                  </UnstyledButton>
+                </Table.Th>
+                <Table.Th>
+                  <UnstyledButton onClick={() => handleSort('afdeling')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Text fw={500}>Afdeling</Text>
+                    {getSortIcon('afdeling')}
+                  </UnstyledButton>
+                </Table.Th>
+                <Table.Th>
+                  <UnstyledButton onClick={() => handleSort('status')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Text fw={500}>Status</Text>
+                    {getSortIcon('status')}
+                  </UnstyledButton>
+                </Table.Th>
                 <Table.Th>Handlinger</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {filteredStudents.map((student) => (
-                <Table.Tr key={student.id}>
+                <Table.Tr 
+                  key={student.id}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => handleViewStudent(student)}
+                >
                   <Table.Td>
                     <Stack gap="xs">
                       <Text fw={500}>{student.navn}</Text>
@@ -215,13 +310,23 @@ export function Students() {
                       {student.status}
                     </Badge>
                   </Table.Td>
-                  <Table.Td>
+                  <Table.Td onClick={(e) => e.stopPropagation()}>
                     <Group gap="xs">
+                      <ActionIcon 
+                        size="sm" 
+                        variant="light" 
+                        color="gray"
+                        onClick={() => handleViewStudent(student)}
+                        title="Vis elev"
+                      >
+                        <IconEye size={16} />
+                      </ActionIcon>
                       <ActionIcon 
                         size="sm" 
                         variant="light" 
                         color="blue"
                         onClick={() => handleEditStudent(student)}
+                        title="Rediger elev"
                       >
                         <IconEdit size={16} />
                       </ActionIcon>
@@ -230,6 +335,7 @@ export function Students() {
                         variant="light" 
                         color="red"
                         onClick={() => handleDeleteStudent(student.id)}
+                        title="Slet elev"
                       >
                         <IconTrash size={16} />
                       </ActionIcon>
@@ -261,6 +367,16 @@ export function Students() {
         onSubmit={handleFormSubmit}
         student={editingStudent}
         title={editingStudent ? 'Rediger elev' : 'Tilføj ny elev'}
+      />
+
+      {/* View modal */}
+      <StudentViewModal
+        opened={viewModalOpened}
+        onClose={() => {
+          setViewModalOpened(false)
+          setViewingStudent(null)
+        }}
+        student={viewingStudent}
       />
     </Container>
   )

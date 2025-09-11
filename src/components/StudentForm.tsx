@@ -1,5 +1,6 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect } from 'react'
 import {
   Modal,
   TextInput,
@@ -34,29 +35,7 @@ export function StudentForm({ opened, onClose, onSubmit, student, title }: Stude
     reset,
   } = useForm<StudentFormData>({
     resolver: zodResolver(studentSchema),
-    defaultValues: student ? {
-      navn: student.navn,
-      fødselsdato: student.fødselsdato,
-      cpr: student.cpr,
-      adresse: student.adresse,
-      telefonnr: student.telefonnr,
-      email: student.email,
-      forældreNavn: student.forældreNavn,
-      forældreTelefon: student.forældreTelefon,
-      forældreAdresse: student.forældreAdresse,
-      forældreEmail: student.forældreEmail,
-      afdeling: student.afdeling,
-      kursistnr: student.kursistnr,
-      kommune: student.kommune,
-      lovgrundlag: student.lovgrundlag,
-      vejlederNavn: student.vejlederNavn,
-      vejlederTlf: student.vejlederTlf,
-      vejlederEmail: student.vejlederEmail,
-      startdato: student.startdato,
-      slutdato: student.slutdato,
-      spor: student.spor,
-      status: student.status,
-    } : {
+    defaultValues: {
       navn: '',
       fødselsdato: '',
       cpr: '',
@@ -80,6 +59,59 @@ export function StudentForm({ opened, onClose, onSubmit, student, title }: Stude
       status: 'UP/Afklaring',
     },
   })
+
+  // Update form values when student prop changes
+  useEffect(() => {
+    if (student) {
+      // Set all form values when editing a student
+      setValue('navn', student.navn || '')
+      setValue('fødselsdato', student.fødselsdato || '')
+      setValue('cpr', student.cpr || '')
+      setValue('adresse', student.adresse || '')
+      setValue('telefonnr', student.telefonnr || '')
+      setValue('email', student.email || '')
+      setValue('forældreNavn', student.forældreNavn || '')
+      setValue('forældreTelefon', student.forældreTelefon || '')
+      setValue('forældreAdresse', student.forældreAdresse || '')
+      setValue('forældreEmail', student.forældreEmail || '')
+      setValue('afdeling', student.afdeling || 'Trekanten')
+      setValue('kursistnr', student.kursistnr || '')
+      setValue('kommune', student.kommune || '')
+      setValue('lovgrundlag', student.lovgrundlag || 'STU')
+      setValue('vejlederNavn', student.vejlederNavn || '')
+      setValue('vejlederTlf', student.vejlederTlf || '')
+      setValue('vejlederEmail', student.vejlederEmail || '')
+      setValue('startdato', student.startdato || '')
+      setValue('slutdato', student.slutdato || '')
+      setValue('spor', student.spor || 'AspIT')
+      setValue('status', student.status || 'UP/Afklaring')
+    } else {
+      // Reset to default values when creating new student
+      reset({
+        navn: '',
+        fødselsdato: '',
+        cpr: '',
+        adresse: '',
+        telefonnr: '',
+        email: '',
+        forældreNavn: '',
+        forældreTelefon: '',
+        forældreAdresse: '',
+        forældreEmail: '',
+        afdeling: 'Trekanten',
+        kursistnr: '',
+        kommune: '',
+        lovgrundlag: 'STU',
+        vejlederNavn: '',
+        vejlederTlf: '',
+        vejlederEmail: '',
+        startdato: '',
+        slutdato: '',
+        spor: 'AspIT',
+        status: 'UP/Afklaring',
+      })
+    }
+  }, [student, setValue, reset])
 
   const handleFormSubmit = (data: StudentFormData) => {
     onSubmit(data)
