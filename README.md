@@ -100,7 +100,7 @@ npm run test
 npm run test:ui
 ```
 
-## 📊 Neste skridt
+## 📊 Næste skridt
 
 1. **Backend Integration**: Connect til jeres C# API
 2. **Authentication**: Implementer login med roller (admin, lærer, elev)
@@ -124,15 +124,3 @@ Projektet bruger Mantine's design system med:
 - Chrome/Edge 90+
 - Firefox 88+
 - Safari 14+
-
-## 🤝 Bidrag til projektet
-
-1. Opret en feature branch
-2. Implementer funktionaliteten
-3. Tilføj tests for ny funktionalitet  
-4. Tjek at build og tests virker
-5. Opret pull request
-
-## 📞 Support
-
-For spørgsmål eller hjælp til videreudvikling, kontakt frontend-teamet.
