@@ -7,11 +7,13 @@ import { StudentForm } from '../components/StudentForm'
 import { StudentViewModal } from '../components/StudentViewModal'
 import { mockStudents as initialMockStudents } from '../data/mockStudents'
 import { studentStorage } from '../services/studentStorage'
+import { useSidebar } from '../contexts/SidebarContext'
 import type { Student } from '../types/Student'
 import type { StudentFormData } from '../schemas/studentSchema'
 
 export function Students() {
   const { colorScheme } = useMantineColorScheme()
+  const { desktopOpened } = useSidebar()
   const [students, setStudents] = useState<Student[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [modalOpened, setModalOpened] = useState(false)
@@ -169,7 +171,7 @@ export function Students() {
   }
 
   return (
-    <Container size="xl">
+    <Container size={desktopOpened ? "xl" : "100%"} style={{ maxWidth: desktopOpened ? undefined : 'none' }}>
       <Group justify="space-between" mb="lg">
         <Title order={1}>Elever ({students.length})</Title>
         <Group>
@@ -258,58 +260,58 @@ export function Students() {
       {filteredStudents.length > 0 && (
         <Card withBorder>
           <Title order={3} mb="md">Alle elever</Title>
-          <Table>
+          <Table style={{ tableLayout: 'fixed', width: '100%' }}>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>
+                <Table.Th style={{ width: desktopOpened ? '200px' : '280px' }}>
                   <UnstyledButton onClick={() => handleSort('navn')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Text fw={500}>Navn</Text>
                     {getSortIcon('navn')}
                   </UnstyledButton>
                 </Table.Th>
-                <Table.Th>
+                <Table.Th style={{ width: '120px', maxWidth: '130px' }}>
                   <UnstyledButton onClick={() => handleSort('kommune')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Text fw={500}>Kommune</Text>
                     {getSortIcon('kommune')}
                   </UnstyledButton>
                 </Table.Th>
-                <Table.Th>
+                <Table.Th style={{ width: desktopOpened ? '180px' : '220px' }}>
                   <UnstyledButton onClick={() => handleSort('email')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Text fw={500}>Email</Text>
                     {getSortIcon('email')}
                   </UnstyledButton>
                 </Table.Th>
-                <Table.Th>
+                <Table.Th style={{ width: '120px', maxWidth: '130px' }}>
                   <UnstyledButton onClick={() => handleSort('afdeling')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Text fw={500}>Afdeling</Text>
                     {getSortIcon('afdeling')}
                   </UnstyledButton>
                 </Table.Th>
-                <Table.Th>
+                <Table.Th style={{ width: '80px', maxWidth: '90px' }}>
                   <UnstyledButton onClick={() => handleSort('spor')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Text fw={500}>Spor</Text>
                     {getSortIcon('spor')}
                   </UnstyledButton>
                 </Table.Th>
-                <Table.Th>
+                <Table.Th style={{ width: '110px', maxWidth: '120px' }}>
                   <UnstyledButton onClick={() => handleSort('startdato')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Text fw={500}>Startdato</Text>
                     {getSortIcon('startdato')}
                   </UnstyledButton>
                 </Table.Th>
-                <Table.Th>
+                <Table.Th style={{ width: '110px', maxWidth: '120px' }}>
                   <UnstyledButton onClick={() => handleSort('slutdato')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Text fw={500}>Slutdato</Text>
                     {getSortIcon('slutdato')}
                   </UnstyledButton>
                 </Table.Th>
-                <Table.Th>
+                <Table.Th style={{ width: desktopOpened ? '100px' : '120px' }}>
                   <UnstyledButton onClick={() => handleSort('status')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Text fw={500}>Status</Text>
                     {getSortIcon('status')}
                   </UnstyledButton>
                 </Table.Th>
-                <Table.Th>Handlinger</Table.Th>
+                <Table.Th style={{ width: '120px' }}>Handlinger</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
