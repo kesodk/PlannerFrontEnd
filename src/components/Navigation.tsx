@@ -1,7 +1,6 @@
 import { NavLink } from 'react-router-dom'
-import { Group, ScrollArea, Stack, Text } from '@mantine/core'
+import { ScrollArea, Stack } from '@mantine/core'
 import { IconUsers, IconSchool, IconCalendarCheck, IconDashboard } from '@tabler/icons-react'
-import { ThemeToggle } from './ThemeToggle'
 import classes from './Navigation.module.css'
 
 const mockdata = [
@@ -28,12 +27,6 @@ export function Navigation() {
   return (
     <nav className={classes.navbar}>
       <div className={classes.navbarMain}>
-        <Group className={classes.header} justify="space-between">
-          <Text size="lg" fw={500}>
-            AspIT Planner (test)
-          </Text>
-          <ThemeToggle />
-        </Group>
         <ScrollArea className={classes.links}>
           <div className={classes.linksInner}>
             <Stack gap={0}>{links}</Stack>
