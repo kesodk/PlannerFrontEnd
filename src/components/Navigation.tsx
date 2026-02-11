@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { ScrollArea, Stack } from '@mantine/core'
-import { IconUsers, IconSchool, IconCalendarCheck, IconDashboard } from '@tabler/icons-react'
+import { IconUsers, IconSchool, IconCalendarCheck, IconDashboard, IconPlugConnected } from '@tabler/icons-react'
 import classes from './Navigation.module.css'
 
 const mockdata = [
@@ -8,6 +8,7 @@ const mockdata = [
   { label: 'Elever', icon: IconUsers, link: '/students' },
   { label: 'Hold', icon: IconSchool, link: '/classes' },
   { label: 'Fremmøde', icon: IconCalendarCheck, link: '/attendance' },
+  { label: 'API Test', icon: IconPlugConnected, link: '/api-test' },
 ]
 
 export function Navigation() {

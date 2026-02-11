@@ -1,5 +1,6 @@
 import { Container, Title, Grid, Card, Text, Group, Badge, Stack } from '@mantine/core'
 import { IconUsers, IconSchool, IconCalendarCheck, IconTrendingUp } from '@tabler/icons-react'
+import { ApiStatusWidget } from '../components/ApiStatusWidget'
 
 const stats = [
   { title: 'Aktive Elever', value: '245', icon: IconUsers, color: 'blue' },
@@ -36,13 +37,19 @@ export function Dashboard() {
       </Grid>
 
       <Grid mt="xl">
+        <Grid.Col span={{ base: 12, md: 4 }}>
+          <ApiStatusWidget />
+        </Grid.Col>
+        
         <Grid.Col span={{ base: 12, md: 8 }}>
           <Card shadow="sm" padding="lg" radius="md" withBorder h={400}>
             <Title order={3} mb="md">Seneste aktivitet</Title>
             <Text c="dimmed">Her vil der være en oversigt over seneste aktiviteter...</Text>
           </Card>
         </Grid.Col>
-        
+      </Grid>
+      
+      <Grid mt="xl">
         <Grid.Col span={{ base: 12, md: 4 }}>
           <Card shadow="sm" padding="lg" radius="md" withBorder h={400}>
             <Title order={3} mb="md">Hurtige handlinger</Title>

@@ -1,20 +1,18 @@
-import { useState, useEffect } from 'react'
-import { Container, Title, Group, Button, TextInput, ActionIcon, Badge, Table, Card, Text, Alert, UnstyledButton, useMantineColorScheme } from '@mantine/core'
+import { useState } from 'react'
+import { Container, Title, Group, Button, TextInput, ActionIcon, Badge, Table, Card, Text, Alert, UnstyledButton, useMantineColorScheme, Loader, Center } from '@mantine/core'
 import { IconPlus, IconSearch, IconEdit, IconTrash, IconRefresh, IconMapPin, IconChevronUp, IconChevronDown, IconSelector, IconEye } from '@tabler/icons-react'
 import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
 import { StudentForm } from '../components/StudentForm'
 import { StudentViewModal } from '../components/StudentViewModal'
-import { mockStudents as initialMockStudents } from '../data/mockStudents'
-import { studentStorage } from '../services/studentStorage'
 import { useSidebar } from '../contexts/SidebarContext'
+import { useStudents, useCreateStudent, useUpdateStudent, useDeleteStudent } from '../services/studentApi'
 import type { Student } from '../types/Student'
 import type { StudentFormData } from '../schemas/studentSchema'
 
 export function Students() {
   const { colorScheme } = useMantineColorScheme()
   const { desktopOpened } = useSidebar()
-  const [students, setStudents] = useState<Student[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [modalOpened, setModalOpened] = useState(false)
   const [viewModalOpened, setViewModalOpened] = useState(false)
@@ -23,11 +21,11 @@ export function Students() {
   const [sortBy, setSortBy] = useState<keyof Student | null>(null)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
-  // Load students from localStorage on component mount
-  useEffect(() => {
-    const storedStudents = studentStorage.initializeWithMockData(initialMockStudents)
-    setStudents(storedStudents)
-  }, [])
+  // Fetch students from API using TanStack Query
+  const { data: students = [], isLoading, isError, error, refetch } = useStudents()
+  const createStudent = useCreateStudent()
+  const updateStudent = useUpdateStudent()
+  const deleteStudent = useDeleteStudent()
 
   const handleSort = (field: keyof Student) => {
     if (sortBy === field) {
@@ -121,53 +119,88 @@ export function Students() {
       children: 'Er du sikker på, at du vil slette denne elev? Denne handling kan ikke fortrydes.',
       labels: { confirm: 'Slet', cancel: 'Annuller' },
       confirmProps: { color: 'red' },
-      onConfirm: () => {
-        const updatedStudents = studentStorage.deleteStudent(id)
-        setStudents(updatedStudents)
-        notifications.show({
-          title: 'Elev slettet',
-          message: 'Eleven er blevet slettet og ændringen er gemt lokalt',
-          color: 'green'
-        })
+      onConfirm: async () => {
+        try {
+          await deleteStudent.mutateAsync(id)
+          notifications.show({
+            title: 'Elev slettet',
+            message: 'Eleven er blevet slettet',
+            color: 'green'
+          })
+        } catch (error) {
+          notifications.show({
+            title: 'Fejl',
+            message: 'Kunne ikke slette eleven',
+            color: 'red'
+          })
+        }
       },
     })
   }
 
-  const handleFormSubmit = (data: StudentFormData) => {
-    if (editingStudent) {
-      // Update existing student
-      const updatedStudent = { ...editingStudent, ...data }
-      const updatedStudents = studentStorage.updateStudent(updatedStudent)
-      setStudents(updatedStudents)
-      notifications.show({
-        title: 'Elev opdateret',
-        message: 'Elevens oplysninger er blevet opdateret og gemt lokalt',
-        color: 'green'
-      })
-    } else {
-      // Create new student
-      const newStudent: Student = {
-        ...data,
-        id: studentStorage.getNextId(),
+  const handleFormSubmit = async (data: StudentFormData) => {
+    try {
+      if (editingStudent) {
+        // Update existing student
+        const updatedStudent = { ...editingStudent, ...data }
+        await updateStudent.mutateAsync(updatedStudent)
+        notifications.show({
+          title: 'Elev opdateret',
+          message: 'Elevens oplysninger er blevet opdateret',
+          color: 'green'
+        })
+      } else {
+        // Create new student
+        await createStudent.mutateAsync(data as Omit<Student, 'id'>)
+        notifications.show({
+          title: 'Elev oprettet',
+          message: 'Ny elev er blevet oprettet',
+          color: 'green'
+        })
       }
-      const updatedStudents = studentStorage.addStudent(newStudent)
-      setStudents(updatedStudents)
+      setModalOpened(false)
+    } catch (error) {
       notifications.show({
-        title: 'Elev oprettet',
-        message: 'Ny elev er blevet oprettet og gemt lokalt',
-        color: 'green'
+        title: 'Fejl',
+        message: editingStudent ? 'Kunne ikke opdatere eleven' : 'Kunne ikke oprette eleven',
+        color: 'red'
       })
     }
   }
 
   const handleRefreshData = () => {
-    const storedStudents = studentStorage.getStudents()
-    setStudents(storedStudents)
+    refetch()
     notifications.show({
       title: 'Data opdateret',
-      message: 'Eleven data er blevet genindlæst fra lokal storage',
+      message: 'Eleven data er blevet genindlæst fra API',
       color: 'blue'
     })
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <Container size={desktopOpened ? "xl" : "100%"} style={{ maxWidth: desktopOpened ? undefined : 'none' }}>
+        <Center style={{ height: '50vh' }}>
+          <Loader size="lg" />
+        </Center>
+      </Container>
+    )
+  }
+
+  // Error state
+  if (isError) {
+    return (
+      <Container size={desktopOpened ? "xl" : "100%"} style={{ maxWidth: desktopOpened ? undefined : 'none' }}>
+        <Alert variant="light" color="red" mb="md">
+          <Text fw={500}>Fejl ved indlæsning af elever</Text>
+          <Text size="sm">{error?.message || 'Kunne ikke forbinde til API'}</Text>
+        </Alert>
+        <Button onClick={() => refetch()} leftSection={<IconRefresh size={16} />}>
+          Prøv igen
+        </Button>
+      </Container>
+    )
   }
 
   return (
@@ -209,30 +242,6 @@ export function Students() {
               Nulstil sortering
             </Button>
           )}
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => {
-              modals.openConfirmModal({
-                title: 'Nulstil data',
-                children: 'Dette vil slette alle lokale data og genindlæse testdata. Er du sikker?',
-                labels: { confirm: 'Nulstil', cancel: 'Annuller' },
-                confirmProps: { color: 'red' },
-                onConfirm: () => {
-                  studentStorage.clearAll()
-                  const freshData = studentStorage.initializeWithMockData(initialMockStudents)
-                  setStudents(freshData)
-                  notifications.show({
-                    title: 'Data nulstillet',
-                    message: 'Alle data er blevet nulstillet til testdata',
-                    color: 'blue'
-                  })
-                },
-              })
-            }}
-          >
-            Nulstil testdata
-          </Button>
         </Group>
       </Group>
 
@@ -240,7 +249,7 @@ export function Students() {
       {students.length === 0 && (
         <Alert variant="light" color="gray" mb="md">
           <Text fw={500}>Ingen elever fundet.</Text>
-          <Text size="sm">Prøv at klikke på "Nulstil testdata" knappen ovenfor for at indlæse test elever.</Text>
+          <Text size="sm">Der er ingen elever i systemet endnu.</Text>
         </Alert>
       )}
 

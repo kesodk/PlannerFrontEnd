@@ -19,18 +19,33 @@ En moderne web-baseret løsning til administration af elever, fremmøderegistrer
 
 ### ✅ Implementeret
 - **Dashboard**: Oversigt over nøgletal og aktiviteter
-- **Elevadministration**: Liste over alle elever med søgning og filtrering
+- **API Integration**: Forbindelse til test-API (cv-pc-x-server:1102)
+- **API Status Widget**: Real-time forbindelsesstatus på dashboard
+- **Elevadministration**: Hent, opret, opdater og slet elever via API
 - **Holdadministration**: Oversigt over aktive og afsluttede hold
 - **Fremmøderegistrering**: Daglig registrering af fremmøde med status-tracking
 - **Responsiv design**: Virker på desktop, tablet og mobil
+- **TanStack Query**: Smart caching og data management
 
-### 🚧 Planlagt (til integration med C# backend)
-- **Authentication**: Login/logout med roller
-- **API Integration**: Connection til jeres C# backend
+### 🚧 Planlagt
+- **Authentication UI**: Login/logout interface (API auth allerede implementeret)
 - **Real-time updates**: Live notifikationer via SignalR
-- **Data persistence**: Gem/hent data fra database
 - **Excel export**: Export af fremmødedata og elevlister
-- **Avancerede formularer**: Oprettelse og redigering af elever/hold
+- **Classes & Attendance API**: Integrere hold og fremmøde med API
+
+## 🔌 API Integration
+
+Projektet bruger nu API'et på `https://cv-pc-x-server:1102/api`.
+
+**Se [API_INTEGRATION.md](./API_INTEGRATION.md) for komplet dokumentation.**
+
+### Hurtig Start
+1. Start development server: `npm run dev`
+2. Dashboard viser API forbindelsesstatus
+3. Students siden henter data fra API
+
+### HTTPS Certificate
+Første gang skal du accepte certificate warning i browseren ved at besøge API URL'en direkte.
 
 ## 🛠️ Udvikling
 

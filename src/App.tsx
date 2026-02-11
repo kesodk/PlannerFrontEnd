@@ -3,7 +3,7 @@ import { AppShell, Group, Text, ActionIcon } from '@mantine/core'
 import { IconChevronRight, IconChevronLeft } from '@tabler/icons-react'
 import { useDisclosure } from '@mantine/hooks'
 import { Navigation } from './components/Navigation'
-import { Dashboard, Students, Classes, Attendance } from './pages'
+import { Dashboard, Students, Classes, Attendance, ApiTest } from './pages'
 import { ThemeToggle } from './components/ThemeToggle'
 import { SidebarProvider } from './contexts/SidebarContext'
 
@@ -63,6 +63,7 @@ function App() {
             <Route path="/students" element={<Students />} />
             <Route path="/classes" element={<Classes />} />
             <Route path="/attendance" element={<Attendance />} />
+            <Route path="/api-test" element={<ApiTest />} />
           </Routes>
         </SidebarProvider>
       </AppShell.Main>

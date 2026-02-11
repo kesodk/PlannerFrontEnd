@@ -13,4 +13,14 @@ export default defineConfig({
   css: {
     postcss: './postcss.config.cjs',
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://cv-pc-x-server:1102',
+        changeOrigin: true,
+        secure: false, // Accepter self-signed certificates
+        rewrite: (path) => path, // Behold /api i stien
+      }
+    }
+  }
 })
