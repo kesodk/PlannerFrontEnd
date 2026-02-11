@@ -5,8 +5,10 @@
  */
 
 export const API_CONFIG = {
-  // Sæt til 'mock' for at bruge JSON Server, 'real' for rigtig backend
-  mode: 'mock' as 'mock' | 'real',
+  // Sæt til 'mock' for at bruge JSON Server (kun local dev)
+  // Sæt til 'static' for at bruge in-memory mock data (fungerer på Vercel)
+  // Sæt til 'real' for rigtig backend
+  mode: (import.meta.env.PROD ? 'static' : 'mock') as 'mock' | 'static' | 'real',
   
   // Mock API (JSON Server)
   mockApi: {
@@ -48,5 +50,12 @@ export function getApiBaseUrl(): string {
  * Check if we're using mock API
  */
 export function isMockMode(): boolean {
-  return API_CONFIG.mode === 'mock'
+  return API_CONFIG.mode === 'mock' || API_CONFIG.mode === 'static'
+}
+
+/**
+ * Check if we're using static mock data (in-memory)
+ */
+export function isStaticMode(): boolean {
+  return API_CONFIG.mode === 'static'
 }

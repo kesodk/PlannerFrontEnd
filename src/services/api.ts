@@ -117,14 +117,18 @@ class ApiService {
     const token = await this.ensureAuthenticated()
 
     // Headers afhænger af om vi bruger mock eller rigtig API
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
     }
     
     // Tilføj kun Authorization header hvis vi har et token (rigtig API)
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
+    }
+    
+    // Merge med eventuelle custom headers
+    if (options.headers) {
+      Object.assign(headers, options.headers)
     }
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {

@@ -20,12 +20,14 @@ En moderne web-baseret løsning til administration af elever, fremmøderegistrer
 ### ✅ Implementeret
 - **Dashboard**: Oversigt over nøgletal og aktiviteter
 - **API Integration**: Forbindelse til test-API (cv-pc-x-server:1102)
+- **Mock API**: JSON Server til lokal udvikling + in-memory fallback til production
 - **API Status Widget**: Real-time forbindelsesstatus på dashboard
 - **Elevadministration**: Hent, opret, opdater og slet elever via API
 - **Holdadministration**: Oversigt over aktive og afsluttede hold
 - **Fremmøderegistrering**: Daglig registrering af fremmøde med status-tracking
 - **Responsiv design**: Virker på desktop, tablet og mobil
 - **TanStack Query**: Smart caching og data management
+- **Vercel-klar**: Automatisk fallback til in-memory mock data i production
 
 ### 🚧 Planlagt
 - **Authentication UI**: Login/logout interface (API auth allerede implementeret)

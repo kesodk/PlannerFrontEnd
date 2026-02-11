@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiService, type StudentDTO } from './api'
-import { isMockMode } from '../config/apiConfig'
+import { isMockMode, isStaticMode } from '../config/apiConfig'
+import { staticMockService } from './staticMockService'
 import type { Student } from '../types/Student'
 
 // Query keys
@@ -116,12 +117,18 @@ export function useStudents() {
   return useQuery({
     queryKey: studentKeys.all,
     queryFn: async () => {
+      // Static mock (in-memory) - fungerer på Vercel
+      if (isStaticMode()) {
+        return await staticMockService.getStudents()
+      }
+      
       const data = await apiService.getStudents()
       
-      // Mock API bruger direkte Student format, rigtig API bruger StudentDTO
+      // Mock API (JSON Server) bruger direkte Student format
       if (isMockMode()) {
         return data as unknown as Student[]
       } else {
+        // Rigtig API bruger StudentDTO format
         return (data as StudentDTO[]).map(mapDtoToStudent)
       }
     },
@@ -136,12 +143,18 @@ export function useStudent(studentId: number) {
   return useQuery({
     queryKey: studentKeys.detail(studentId),
     queryFn: async () => {
+      // Static mock (in-memory) - fungerer på Vercel
+      if (isStaticMode()) {
+        return await staticMockService.getStudent(studentId)
+      }
+      
       const data = await apiService.getStudent(studentId)
       
-      // Mock API bruger direkte Student format, rigtig API bruger StudentDTO
+      // Mock API (JSON Server) bruger direkte Student format
       if (isMockMode()) {
         return data as unknown as Student
       } else {
+        // Rigtig API bruger StudentDTO format
         return mapDtoToStudent(data as StudentDTO)
       }
     },
@@ -157,8 +170,13 @@ export function useCreateStudent() {
 
   return useMutation({
     mutationFn: async (student: Omit<Student, 'id'>) => {
+      // Static mock (in-memory) - fungerer på Vercel
+      if (isStaticMode()) {
+        return await staticMockService.createStudent(student)
+      }
+      
       if (isMockMode()) {
-        // Mock API bruger direkte Student format
+        // Mock API (JSON Server) bruger direkte Student format
         const created = await apiService.createStudent(student as any)
         return created as unknown as Student
       } else {
@@ -182,8 +200,13 @@ export function useUpdateStudent() {
 
   return useMutation({
     mutationFn: async (student: Student) => {
+      // Static mock (in-memory) - fungerer på Vercel
+      if (isStaticMode()) {
+        return await staticMockService.updateStudent(student.id, student)
+      }
+      
       if (isMockMode()) {
-        // Mock API bruger direkte Student format
+        // Mock API (JSON Server) bruger direkte Student format
         const updated = await apiService.updateStudent(student.id, student as any)
         return updated as unknown as Student
       } else {
@@ -208,6 +231,12 @@ export function useDeleteStudent() {
 
   return useMutation({
     mutationFn: async (studentId: number) => {
+      // Static mock (in-memory) - fungerer på Vercel
+      if (isStaticMode()) {
+        await staticMockService.deleteStudent(studentId)
+        return
+      }
+      
       await apiService.deleteStudent(studentId)
     },
     onSuccess: () => {

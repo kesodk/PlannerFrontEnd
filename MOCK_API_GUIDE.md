@@ -120,13 +120,35 @@ export const API_CONFIG = {
 
 ## 🚀 Deployment
 
-Ved deployment skal du:
+Ved deployment (f.eks. til Vercel) sker der automatisk følgende:
 
-1. Sæt `mode: 'real'` i `apiConfig.ts`
-2. Byg projektet: `npm run build`
-3. Deploy kun `dist/` folderen
+1. **Auto-detect production** - `apiConfig.ts` detekterer at vi er i production
+2. **Skifter til 'static' mode** - Bruger in-memory mock data i stedet for JSON Server
+3. **Fuld CRUD virker** - Alle operationer virker, men data persisterer ikke mellem page reloads
 
-Mock API (JSON Server) er kun til lokal udvikling og inkluderes ikke i production build.
+### Deployment Modes
+
+- **Development (local)**: Bruger JSON Server (`mode: 'mock'`)
+  - Data persisterer i `db.json`
+  - Kræver `npm run dev:mock`
+
+- **Production (Vercel/Netlify)**: Bruger in-memory data (`mode: 'static'`)
+  - Data er hardcoded i `src/data/mockData.ts`
+  - Data nulstilles ved page reload
+  - Intet server krævet
+
+- **Real Backend**: Forbinder til rigtig API (`mode: 'real'`)
+  - Skift manuelt i `apiConfig.ts`
+  - Kræver backend server
+
+### Manual Override
+
+Hvis du vil teste static mode lokalt:
+
+```typescript
+// src/config/apiConfig.ts
+mode: 'static' // I stedet for 'mock'
+```
 
 ## 📚 Yderligere Ressourcer
 

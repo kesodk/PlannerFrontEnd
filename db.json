@@ -1,10 +1,10 @@
 {
   "students": [
     {
-      "id": 1,
-      "navn": "Anders Jensen",
+      "id": "1",
+      "navn": "Anders ASHDASD",
       "fødselsdato": "2005-03-15",
-      "cpr": "1505",
+      "cpr": "150305-1234",
       "adresse": "Nørregade 12, 7100 Vejle",
       "telefonnr": "12345678",
       "email": "anders.jensen@example.com",
@@ -25,10 +25,10 @@
       "status": "Indskrevet"
     },
     {
-      "id": 2,
+      "id": "2",
       "navn": "Sofia Nielsen",
       "fødselsdato": "2004-07-22",
-      "cpr": "2207",
+      "cpr": "220704-5678",
       "adresse": "Vestergade 45, 8000 Aarhus",
       "telefonnr": "87654321",
       "email": "sofia.nielsen@example.com",
@@ -49,10 +49,10 @@
       "status": "Indskrevet"
     },
     {
-      "id": 3,
+      "id": "3",
       "navn": "Mohammed Ali",
       "fødselsdato": "2005-11-03",
-      "cpr": "0311",
+      "cpr": "031105-2345",
       "adresse": "Søndergade 78, 6700 Esbjerg",
       "telefonnr": "11223344",
       "email": "mohammed.ali@example.com",
@@ -73,10 +73,10 @@
       "status": "Indskrevet"
     },
     {
-      "id": 4,
+      "id": "4",
       "navn": "Emma Larsen",
       "fødselsdato": "2004-09-18",
-      "cpr": "1809",
+      "cpr": "180904-3456",
       "adresse": "Hovedgaden 23, 2100 København Ø",
       "telefonnr": "33445566",
       "email": "emma.larsen@example.com",
@@ -97,10 +97,10 @@
       "status": "Indskrevet"
     },
     {
-      "id": 5,
+      "id": "5",
       "navn": "Lucas Petersen",
       "fødselsdato": "2005-05-30",
-      "cpr": "3005",
+      "cpr": "300505-4567",
       "adresse": "Banegårdsgade 56, 7100 Vejle",
       "telefonnr": "55667788",
       "email": "lucas.petersen@example.com",
@@ -123,7 +123,7 @@
   ],
   "classes": [
     {
-      "id": 1,
+      "id": "1",
       "navn": "AspIT Vejle Forår 2024",
       "afdeling": "Trekanten",
       "startdato": "2024-01-15",
@@ -132,7 +132,7 @@
       "antalElever": 12
     },
     {
-      "id": 2,
+      "id": "2",
       "navn": "AspIT Aarhus Forår 2024",
       "afdeling": "Østjylland",
       "startdato": "2024-02-01",
@@ -141,7 +141,7 @@
       "antalElever": 15
     },
     {
-      "id": 3,
+      "id": "3",
       "navn": "AspIN København Forår 2024",
       "afdeling": "Storkøbenhavn",
       "startdato": "2024-02-10",
@@ -152,35 +152,35 @@
   ],
   "attendance": [
     {
-      "id": 1,
+      "id": "1",
       "studentId": 1,
       "dato": "2024-02-11",
       "status": "Tilstede",
       "bemærkning": ""
     },
     {
-      "id": 2,
+      "id": "2",
       "studentId": 2,
       "dato": "2024-02-11",
       "status": "Tilstede",
       "bemærkning": ""
     },
     {
-      "id": 3,
+      "id": "3",
       "studentId": 3,
       "dato": "2024-02-11",
       "status": "Syg",
       "bemærkning": "Sygemelding modtaget"
     },
     {
-      "id": 4,
+      "id": "4",
       "studentId": 4,
       "dato": "2024-02-11",
       "status": "Tilstede",
       "bemærkning": ""
     },
     {
-      "id": 5,
+      "id": "5",
       "studentId": 5,
       "dato": "2024-02-11",
       "status": "Fravær",
