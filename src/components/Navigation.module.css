@@ -58,3 +58,27 @@
     }
   }
 }
+
+.expandButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  position: relative;
+}
+
+.chevron {
+  position: absolute;
+  right: var(--mantine-spacing-md);
+  width: rem(18px);
+  height: rem(18px);
+  transition: transform 200ms ease;
+}
+
+.expanded .chevron {
+  transform: rotate(180deg);
+}
+
+.subLink {
+  padding-left: calc(var(--mantine-spacing-md) + var(--mantine-spacing-lg));
+}

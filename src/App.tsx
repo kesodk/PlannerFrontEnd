@@ -3,7 +3,7 @@ import { AppShell, Group, Text, ActionIcon } from '@mantine/core'
 import { IconChevronRight, IconChevronLeft } from '@tabler/icons-react'
 import { useDisclosure } from '@mantine/hooks'
 import { Navigation } from './components/Navigation'
-import { Dashboard, Students, Classes, Attendance, ApiTest } from './pages'
+import { Dashboard, Planning, Evaluation, Attendance, Students, Classes, Assessments, AssessmentDetail } from './pages'
 import { ThemeToggle } from './components/ThemeToggle'
 import { SidebarProvider } from './contexts/SidebarContext'
 
@@ -60,10 +60,14 @@ function App() {
         <SidebarProvider desktopOpened={desktopOpened} mobileOpened={mobileOpened}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/students" element={<Students />} />
-            <Route path="/classes" element={<Classes />} />
+            <Route path="/planning" element={<Planning />} />
+            <Route path="/evaluation" element={<Evaluation />} />
             <Route path="/attendance" element={<Attendance />} />
-            <Route path="/api-test" element={<ApiTest />} />
+            <Route path="/administration/students" element={<Students />} />
+            <Route path="/administration/classes" element={<Classes />} />
+            <Route path="/administration/assessments" element={<Assessments />} />
+            <Route path="/administration/assessments/:studentId" element={<AssessmentDetail />} />
+            <Route path="/administration/overviews" element={<div>Oversigter - kommer snart</div>} />
           </Routes>
         </SidebarProvider>
       </AppShell.Main>
