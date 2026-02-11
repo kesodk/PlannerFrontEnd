@@ -1,5 +1,5 @@
-import { Container, Title, Stack, Card, Text, Group, Badge, ThemeIcon, Alert } from '@mantine/core'
-import { IconCalendarEvent, IconUsers, IconSchool, IconInfoCircle } from '@tabler/icons-react'
+import { Container, Title, Stack, Text, ThemeIcon } from '@mantine/core'
+import { IconCalendarEvent } from '@tabler/icons-react'
 
 export function Attendance() {
   return (
@@ -16,57 +16,9 @@ export function Attendance() {
           </Text>
         </Stack>
 
-        <Alert 
-          icon={<IconInfoCircle size={16} />} 
-          title="Kommer snart!" 
-          color="green"
-          radius="md"
-          style={{ maxWidth: 500 }}
-        >
-          Fremmøde systemet er planlagt til at omfatte:
-          <br />• Daglig fremmøderegistrering
-          <br />• Automatisk notifikationer ved fravær
-          <br />• Statistikker og rapporter
-          <br />• Integration med elevadministration
-        </Alert>
+        
 
-        <Card withBorder padding="xl" radius="md" style={{ maxWidth: 600 }}>
-          <Stack gap="md">
-            <Group justify="center">
-              <Badge size="lg" variant="light" color="green">Fase 3</Badge>
-            </Group>
-            
-            <Text ta="center" fw={500}>
-              I mellemtiden kan du teste elevadministrationen
-            </Text>
-            
-            <Group justify="space-around" mt="md">
-              <Stack align="center" gap="xs">
-                <ThemeIcon size={50} radius="md" variant="light" color="green">
-                  <IconUsers size={24} />
-                </ThemeIcon>
-                <Text size="sm" fw={500}>Elevadministration</Text>
-                <Badge size="sm" color="green">Klar</Badge>
-              </Stack>
-              
-              <Stack align="center" gap="xs">
-                <ThemeIcon size={50} radius="md" variant="light" color="gray">
-                  <IconSchool size={24} />
-                </ThemeIcon>
-                <Text size="sm" fw={500}>Hold</Text>
-                <Badge size="sm" color="gray">Kommer snart</Badge>
-              </Stack>
-              
-              <Stack align="center" gap="xs">
-                <ThemeIcon size={50} radius="md" variant="light" color="gray">
-                  <IconCalendarEvent size={24} />
-                </ThemeIcon>
-                <Text size="sm" fw={500}>Fremmøde</Text>
-                <Badge size="sm" color="gray">Kommer snart</Badge>
-              </Stack>
-            </Group>
-          </Stack>
-        </Card>
+        
       </Stack>
     </Container>
   )
