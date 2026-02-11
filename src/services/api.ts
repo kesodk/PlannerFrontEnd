@@ -1,15 +1,10 @@
-// API Configuration
-// Brug proxy i development, direkte URL i production
-const API_BASE_URL = import.meta.env.DEV 
-  ? '/api' // Proxy i development (omgår CORS)
-  : 'https://cv-pc-x-server:1102/api' // Direkte i production
+import { API_CONFIG, getApiBaseUrl, isMockMode } from '../config/apiConfig'
 
-// Auth credentials
-const AUTH_CREDENTIALS = {
-  username: 'ApiUser',
-  password: '6sLY2kOz4+L1IZGboOHlv52nfgkNk2aZAaygijy8NCw=',
-  adUsername: 'cv\\keso'
-}
+// Get API base URL from config
+const API_BASE_URL = getApiBaseUrl()
+
+// Auth credentials (only used for real API)
+const AUTH_CREDENTIALS = API_CONFIG.realApi.auth
 
 // Token storage
 const TOKEN_KEY = 'auth_token'
@@ -98,9 +93,14 @@ class ApiService {
   }
 
   /**
-   * Sikre at vi har et gyldigt token
+   * Sikre at vi har et gyldigt token (kun for rigtig API)
    */
-  private async ensureAuthenticated(): Promise<string> {
+  private async ensureAuthenticated(): Promise<string | null> {
+    // Skip authentication for mock API
+    if (isMockMode()) {
+      return null
+    }
+    
     if (!this.token) {
       await this.login()
     }
@@ -116,17 +116,24 @@ class ApiService {
   ): Promise<T> {
     const token = await this.ensureAuthenticated()
 
+    // Headers afhænger af om vi bruger mock eller rigtig API
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    }
+    
+    // Tilføj kun Authorization header hvis vi har et token (rigtig API)
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        ...options.headers,
-      },
+      headers,
     })
 
-    // Hvis unauthorized, prøv at login igen
-    if (response.status === 401) {
+    // Hvis unauthorized og rigtig API, prøv at login igen
+    if (response.status === 401 && !isMockMode()) {
       this.token = null
       localStorage.removeItem(TOKEN_KEY)
       const newToken = await this.login()

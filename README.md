@@ -54,11 +54,15 @@ Første gang skal du accepte certificate warning i browseren ved at besøge API 
 - npm eller yarn
 
 ### Installation og opstart
+
 ```bash
 # Installer dependencies
 npm install
 
-# Start development server
+# Start med MOCK API (anbefalet under udvikling)
+npm run dev:mock
+
+# Eller start kun Vite (hvis du vil bruge rigtig backend)
 npm run dev
 
 # Byg til produktion
@@ -70,6 +74,10 @@ npm run test
 # Preview production build
 npm run preview
 ```
+
+**💡 Tip:** Brug `npm run dev:mock` under udvikling - det giver dig et fuldt funktionelt REST API med CRUD uden at være afhængig af backend.
+
+**📖 Se [MOCK_API_GUIDE.md](./MOCK_API_GUIDE.md) for detaljer om mock API.**
 
 ### Project struktur
 ```

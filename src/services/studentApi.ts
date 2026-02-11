@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiService, type StudentDTO } from './api'
+import { isMockMode } from '../config/apiConfig'
 import type { Student } from '../types/Student'
 
 // Query keys
@@ -10,6 +11,7 @@ export const studentKeys = {
 
 /**
  * Konverter API StudentDTO til vores interne Student type
+ * (kun brugt når rigtig backend er aktiv)
  */
 export function mapDtoToStudent(dto: StudentDTO): Student {
   return {
@@ -42,6 +44,7 @@ export function mapDtoToStudent(dto: StudentDTO): Student {
 
 /**
  * Konverter vores interne Student type til API StudentDTO
+ * (kun brugt når rigtig backend er aktiv)
  */
 export function mapStudentToDto(student: Student): Omit<StudentDTO, 'studentId'> {
   return {
@@ -113,8 +116,14 @@ export function useStudents() {
   return useQuery({
     queryKey: studentKeys.all,
     queryFn: async () => {
-      const dtos = await apiService.getStudents()
-      return dtos.map(mapDtoToStudent)
+      const data = await apiService.getStudents()
+      
+      // Mock API bruger direkte Student format, rigtig API bruger StudentDTO
+      if (isMockMode()) {
+        return data as unknown as Student[]
+      } else {
+        return (data as StudentDTO[]).map(mapDtoToStudent)
+      }
     },
     staleTime: 1000 * 60 * 5, // 5 minutter
   })
@@ -127,8 +136,14 @@ export function useStudent(studentId: number) {
   return useQuery({
     queryKey: studentKeys.detail(studentId),
     queryFn: async () => {
-      const dto = await apiService.getStudent(studentId)
-      return mapDtoToStudent(dto)
+      const data = await apiService.getStudent(studentId)
+      
+      // Mock API bruger direkte Student format, rigtig API bruger StudentDTO
+      if (isMockMode()) {
+        return data as unknown as Student
+      } else {
+        return mapDtoToStudent(data as StudentDTO)
+      }
     },
     enabled: !!studentId,
   })
@@ -142,9 +157,16 @@ export function useCreateStudent() {
 
   return useMutation({
     mutationFn: async (student: Omit<Student, 'id'>) => {
-      const dto = mapStudentToDto({ ...student, id: 0 })
-      const created = await apiService.createStudent(dto)
-      return mapDtoToStudent(created)
+      if (isMockMode()) {
+        // Mock API bruger direkte Student format
+        const created = await apiService.createStudent(student as any)
+        return created as unknown as Student
+      } else {
+        // Rigtig API bruger StudentDTO format
+        const dto = mapStudentToDto({ ...student, id: 0 })
+        const created = await apiService.createStudent(dto)
+        return mapDtoToStudent(created as StudentDTO)
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentKeys.all })
@@ -160,9 +182,16 @@ export function useUpdateStudent() {
 
   return useMutation({
     mutationFn: async (student: Student) => {
-      const dto = mapStudentToDto(student)
-      const updated = await apiService.updateStudent(student.id, dto)
-      return mapDtoToStudent(updated)
+      if (isMockMode()) {
+        // Mock API bruger direkte Student format
+        const updated = await apiService.updateStudent(student.id, student as any)
+        return updated as unknown as Student
+      } else {
+        // Rigtig API bruger StudentDTO format
+        const dto = mapStudentToDto(student)
+        const updated = await apiService.updateStudent(student.id, dto)
+        return mapDtoToStudent(updated as StudentDTO)
+      }
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: studentKeys.all })
