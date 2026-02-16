@@ -1,14 +1,20 @@
 /**
  * API Configuration
  * 
- * Skift mellem mock API (JSON Server) og rigtig backend her
+ * ✅ AKTIV: Egen Laravel MySQL Backend (Februar 2026)
+ * 
+ * Nuværende setup: Laravel API på http://localhost:8000/api
+ * Database: MySQL via XAMPP
+ * 
+ * Mode indstillinger:
+ * - 'mock' = JSON Server (kun local dev)
+ * - 'static' = In-memory mock data (fungerer på Vercel)
+ * - 'real' = Laravel backend (AKTIVERET)
  */
 
 export const API_CONFIG = {
-  // Sæt til 'mock' for at bruge JSON Server (kun local dev)
-  // Sæt til 'static' for at bruge in-memory mock data (fungerer på Vercel)
-  // Sæt til 'real' for rigtig backend
-  mode: (import.meta.env.PROD ? 'static' : 'mock') as 'mock' | 'static' | 'real',
+  // Bruger nu Laravel backend
+  mode: 'real' as 'mock' | 'static' | 'real',
   
   // Mock API (JSON Server)
   mockApi: {
@@ -21,18 +27,14 @@ export const API_CONFIG = {
     }
   },
   
-  // Rigtig API (din kollegas backend)
+  // ✅ AKTIVERET - Laravel MySQL Backend
   realApi: {
-    // Brug proxy i development, direkte URL i production
-    baseUrl: import.meta.env.DEV 
-      ? '/api' // Proxy i development (omgår CORS)
-      : 'https://cv-pc-x-server:1102/api', // Direkte i production
+    baseUrl: 'http://localhost:8000/api',
     
-    // Backend credentials (kun nødvendig for rigtig API)
+    // Laravel Sanctum credentials
     auth: {
-      username: 'ApiUser',
-      password: '6sLY2kOz4+L1IZGboOHlv52nfgkNk2aZAaygijy8NCw=',
-      adUsername: 'cv\\keso'
+      email: 'admin@aspiring.dk',
+      password: 'password123'
     }
   }
 }

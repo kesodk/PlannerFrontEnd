@@ -1,7 +1,16 @@
 import { useState } from 'react'
 import { Container, Title, Card, Text, Button, Stack, Alert, Code, Group, Badge } from '@mantine/core'
-import { IconCheck, IconX, IconRefresh } from '@tabler/icons-react'
+import { IconCheck, IconX, IconRefresh, IconAlertCircle } from '@tabler/icons-react'
 import { apiService } from '../services/api'
+
+/**
+ * ⚠️ DEAKTIVERET - Denne test side er ikke længere aktiv
+ * 
+ * Det eksterne API er sat på pause (Februar 2026).
+ * Systemet bruger nu mock/static data.
+ * 
+ * Se API_INTEGRATION.md for aktuel status.
+ */
 
 interface TestResult {
   step: string
@@ -121,7 +130,26 @@ export function ApiTest() {
     <Container size="md" py="xl">
       <Title order={1} mb="lg">API Test</Title>
 
-      <Alert color="blue" title="✅ Vite Proxy er nu aktiveret" mb="lg">
+      <Alert 
+        color="red" 
+        title="⚠️ DENNE SIDE ER DEAKTIVERET" 
+        icon={<IconAlertCircle />}
+        mb="lg"
+      >
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>
+            Det eksterne API er sat på pause (Februar 2026).
+          </Text>
+          <Text size="sm">
+            Systemet bruger nu mock/static data i stedet for det eksterne API.
+          </Text>
+          <Text size="sm" c="dimmed" mt="xs">
+            Se <Code>API_INTEGRATION.md</Code> for aktuel status og fremtidige planer om MySQL backend.
+          </Text>
+        </Stack>
+      </Alert>
+
+      <Alert color="blue" title="✅ Vite Proxy er nu aktiveret (HISTORISK)" mb="lg">
         <Stack gap="xs">
           <Text size="sm" fw={500}>
             Projektet bruger nu en proxy til at omgå CORS problemer i development mode.
@@ -180,7 +208,10 @@ export function ApiTest() {
         </Stack>
       </Card>
 
-      <Alert color="yellow" title="Hvis testen stadig fejler">
+      <Alert color="yellow" title="Hvis testen stadig fejler (HISTORISK - ikke længere relevant)">
+        <Text size="sm" c="dimmed" mb="xs">
+          Nedenstående instruktioner vedrører det eksterne API som nu er sat på pause.
+        </Text>
         <Stack gap="xs">
           <Text size="sm" fw={500}>1. Backend serveren skal køre:</Text>
           <Text size="sm">→ Bed din kollega tjekke at serveren er startet</Text>

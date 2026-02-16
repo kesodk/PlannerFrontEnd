@@ -124,13 +124,9 @@ export function useStudents() {
       
       const data = await apiService.getStudents()
       
-      // Mock API (JSON Server) bruger direkte Student format
-      if (isMockMode()) {
-        return data as unknown as Student[]
-      } else {
-        // Rigtig API bruger StudentDTO format
-        return (data as StudentDTO[]).map(mapDtoToStudent)
-      }
+      // Mock API (JSON Server) og Laravel API bruger begge direkte Student format
+      // Laravel backend returnerer allerede data med danske feltnavne (navn, fødselsdato, osv.)
+      return data as unknown as Student[]
     },
     staleTime: 1000 * 60 * 5, // 5 minutter
   })
@@ -150,13 +146,9 @@ export function useStudent(studentId: number) {
       
       const data = await apiService.getStudent(studentId)
       
-      // Mock API (JSON Server) bruger direkte Student format
-      if (isMockMode()) {
-        return data as unknown as Student
-      } else {
-        // Rigtig API bruger StudentDTO format
-        return mapDtoToStudent(data as StudentDTO)
-      }
+      // Mock API (JSON Server) og Laravel API bruger begge direkte Student format
+      // Laravel backend returnerer allerede data med danske feltnavne (navn, fødselsdato, osv.)
+      return data as unknown as Student
     },
     enabled: !!studentId,
   })
@@ -175,16 +167,9 @@ export function useCreateStudent() {
         return await staticMockService.createStudent(student)
       }
       
-      if (isMockMode()) {
-        // Mock API (JSON Server) bruger direkte Student format
-        const created = await apiService.createStudent(student as any)
-        return created as unknown as Student
-      } else {
-        // Rigtig API bruger StudentDTO format
-        const dto = mapStudentToDto({ ...student, id: 0 })
-        const created = await apiService.createStudent(dto)
-        return mapDtoToStudent(created as StudentDTO)
-      }
+      // Mock API (JSON Server) og Laravel API bruger begge direkte Student format
+      const created = await apiService.createStudent(student as any)
+      return created as unknown as Student
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentKeys.all })
@@ -205,16 +190,9 @@ export function useUpdateStudent() {
         return await staticMockService.updateStudent(student.id, student)
       }
       
-      if (isMockMode()) {
-        // Mock API (JSON Server) bruger direkte Student format
-        const updated = await apiService.updateStudent(student.id, student as any)
-        return updated as unknown as Student
-      } else {
-        // Rigtig API bruger StudentDTO format
-        const dto = mapStudentToDto(student)
-        const updated = await apiService.updateStudent(student.id, dto)
-        return mapDtoToStudent(updated as StudentDTO)
-      }
+      // Mock API (JSON Server) og Laravel API bruger begge direkte Student format
+      const updated = await apiService.updateStudent(student.id, student as any)
+      return updated as unknown as Student
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: studentKeys.all })

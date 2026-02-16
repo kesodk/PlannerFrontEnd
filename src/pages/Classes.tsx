@@ -12,11 +12,24 @@ import {
   TextInput,
   Modal,
   ActionIcon,
-  ScrollArea
+  ScrollArea,
+  Loader,
+  Alert
 } from '@mantine/core'
-import { IconSearch, IconPlus, IconArrowRight, IconArrowLeft, IconEdit, IconTrash } from '@tabler/icons-react'
+import { IconSearch, IconPlus, IconArrowRight, IconArrowLeft, IconEdit, IconTrash, IconAlertCircle } from '@tabler/icons-react'
 import { useStudents } from '../services/studentApi'
-import { mockClasses, availableTeachers, availableFag, availableModulperioder, type ClassData } from '../data/mockClasses'
+import { 
+  useClasses, 
+  useCreateClass, 
+  useUpdateClass, 
+  useDeleteClass, 
+  useEnrollStudent, 
+  useUnenrollStudent,
+  type ClassData 
+} from '../services/classApi'
+import { availableTeachers, availableFag, availableModulperioder } from '../data/mockClasses'
+import { formatDate } from '../utils/dateUtils'
+import { canCreateClassForModulperiode, getModulperiodeDisplayName, parseModulperiode } from '../utils/modulperiodeUtils'
 
 // Funktion til at beregne datoer fra modulperiode
 function getModulperiodeDates(modulperiode: string): { startdato: string; slutdato: string } {
@@ -60,7 +73,6 @@ function generateClassName(modulperiode: string, fag: string, lærer: string): s
 }
 
 export function Classes() {
-  const [classes, setClasses] = useState<ClassData[]>(mockClasses)
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('Igangværende')
@@ -68,7 +80,7 @@ export function Classes() {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-  const [saveModalOpen, setSaveModalOpen] = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
   
   // Form state for new/edit class
   const [classForm, setClassForm] = useState({
@@ -78,9 +90,19 @@ export function Classes() {
     modulperiode: ''
   })
 
+  // API hooks
   const { data: students = [] } = useStudents()
+  const { data: classes = [], isLoading: classesLoading, error: classesError } = useClasses()
+  const createClassMutation = useCreateClass()
+  const updateClassMutation = useUpdateClass()
+  const deleteClassMutation = useDeleteClass()
+  const enrollStudentMutation = useEnrollStudent()
+  const unenrollStudentMutation = useUnenrollStudent()
 
   const selectedClass = classes.find(c => c.id === selectedClassId)
+  
+  // Begræns til kun de 3 næstkommende modulperioder
+  const next3Modulperioder = availableModulperioder.slice(0, 3)
 
   // Filter classes
   const filteredClasses = classes.filter(cls => {
@@ -95,9 +117,7 @@ export function Classes() {
   })
 
   // Get students in selected class
-  const studentsInClass = selectedClass 
-    ? students.filter(s => selectedClass.elevIds.includes(s.id))
-    : []
+  const studentsInClass = selectedClass?.students || []
 
   // Get students not in any class for the selected modulperiode
   const studentsWithoutClass = selectedClass
@@ -105,7 +125,7 @@ export function Classes() {
         // Check if student is already in a class for this modulperiode
         const isInAnyClass = classes.some(cls => 
           cls.modulperiode === selectedClass.modulperiode && 
-          cls.elevIds.includes(s.id)
+          cls.students?.some(student => student.id === s.id)
         )
         return !isInAnyClass
       })
@@ -116,86 +136,117 @@ export function Classes() {
     label: a
   }))
 
-  const handleAddStudentToClass = (studentId: number) => {
+  const handleAddStudentToClass = async (studentId: number) => {
     if (!selectedClass) return
     
-    setClasses(prev =>
-      prev.map(cls =>
-        cls.id === selectedClass.id
-          ? { ...cls, elevIds: [...cls.elevIds, studentId] }
-          : cls
-      )
-    )
+    // Tjek om holdet er afsluttet
+    if (selectedClass.status === 'Afsluttet') {
+      console.warn('Kan ikke tilføje elever til afsluttet hold')
+      return
+    }
+    
+    try {
+      await enrollStudentMutation.mutateAsync({
+        classId: selectedClass.id,
+        studentId,
+        enrollmentDate: new Date().toISOString().split('T')[0]
+      })
+    } catch (error) {
+      console.error('Failed to enroll student:', error)
+    }
   }
 
-  const handleRemoveStudentFromClass = (studentId: number) => {
+  const handleRemoveStudentFromClass = async (studentId: number) => {
     if (!selectedClass) return
     
-    setClasses(prev =>
-      prev.map(cls =>
-        cls.id === selectedClass.id
-          ? { ...cls, elevIds: cls.elevIds.filter(id => id !== studentId) }
-          : cls
-      )
-    )
+    // Tjek om holdet er afsluttet
+    if (selectedClass.status === 'Afsluttet') {
+      console.warn('Kan ikke fjerne elever fra afsluttet hold')
+      return
+    }
+    
+    try {
+      await unenrollStudentMutation.mutateAsync({
+        classId: selectedClass.id,
+        studentId
+      })
+    } catch (error) {
+      console.error('Failed to unenroll student:', error)
+    }
   }
 
-  const handleCreateClass = () => {
-    const newId = Math.max(...classes.map(c => c.id)) + 1
+  const handleCreateClass = async () => {
+    setValidationError(null)
+    
+    // Valider modulperiode
+    const validation = canCreateClassForModulperiode(classForm.modulperiode)
+    if (!validation.valid) {
+      setValidationError(validation.reason || 'Ugyldig modulperiode')
+      return
+    }
+    
     const { startdato, slutdato } = getModulperiodeDates(classForm.modulperiode)
     const navn = generateClassName(classForm.modulperiode, classForm.fag, classForm.lærer)
     
-    const newClassData: ClassData = {
-      id: newId,
+    const newClassData: Omit<ClassData, 'id'> = {
       navn,
       ...classForm,
       startdato,
       slutdato,
       status: new Date(startdato) > new Date() ? 'Fremtidig' : 
-              new Date(slutdato) < new Date() ? 'Afsluttet' : 'Igangværende',
-      elevIds: []
+              new Date(slutdato) < new Date() ? 'Afsluttet' : 'Igangværende'
     }
     
-    setClasses(prev => [...prev, newClassData])
-    setCreateModalOpen(false)
-    setClassForm({
-      afdeling: '',
-      lærer: '',
-      fag: '',
-      modulperiode: ''
-    })
+    try {
+      await createClassMutation.mutateAsync(newClassData)
+      setCreateModalOpen(false)
+      setClassForm({
+        afdeling: '',
+        lærer: '',
+        fag: '',
+        modulperiode: ''
+      })
+      setValidationError(null)
+    } catch (error) {
+      console.error('Failed to create class:', error)
+      setValidationError('Kunne ikke oprette hold. Prøv igen.')
+    }
   }
 
-  const handleEditClass = () => {
+  const handleEditClass = async () => {
     if (!selectedClass) return
     
     const { startdato, slutdato } = getModulperiodeDates(classForm.modulperiode)
     const navn = generateClassName(classForm.modulperiode, classForm.fag, classForm.lærer)
     
-    setClasses(prev =>
-      prev.map(cls =>
-        cls.id === selectedClass.id
-          ? {
-              ...cls,
-              navn,
-              ...classForm,
-              startdato,
-              slutdato,
-              status: new Date(startdato) > new Date() ? 'Fremtidig' :
-                      new Date(slutdato) < new Date() ? 'Afsluttet' : 'Igangværende'
-            }
-          : cls
-      )
-    )
-    setEditModalOpen(false)
+    const updatedClass: ClassData = {
+      ...selectedClass,
+      navn,
+      ...classForm,
+      startdato,
+      slutdato,
+      status: new Date(startdato) > new Date() ? 'Fremtidig' :
+              new Date(slutdato) < new Date() ? 'Afsluttet' : 'Igangværende'
+    }
+    
+    try {
+      await updateClassMutation.mutateAsync(updatedClass)
+      setEditModalOpen(false)
+    } catch (error) {
+      console.error('Failed to update class:', error)
+    }
   }
 
-  const handleDeleteClass = () => {
+  const handleDeleteClass = async () => {
     if (!selectedClass) return
     
-    setClasses(prev => prev.filter(cls => cls.id !== selectedClass.id))
-    setSelectedClassId(null)
-    setDeleteModalOpen(false)
+    try {
+      await deleteClassMutation.mutateAsync(selectedClass.id)
+      setSelectedClassId(null)
+      setDeleteModalOpen(false)
+    } catch (error) {
+      console.error('Failed to delete class:', error)
+    }
   }
 
   const handleOpenEdit = () => {
@@ -210,13 +261,14 @@ export function Classes() {
     setEditModalOpen(true)
   }
 
-  const handleSave = () => {
-    console.log('Gemmer hold:', selectedClass)
-    setSaveModalOpen(true)
-  }
-
   return (
     <>
+      {classesError && (
+        <Alert icon={<IconAlertCircle size={16} />} title="Fejl" color="red" mb="md">
+          Kunne ikke hente hold: {classesError instanceof Error ? classesError.message : 'Ukendt fejl'}
+        </Alert>
+      )}
+      
       <Grid gutter="md">
         {/* Venstre kolonne - Hold liste */}
         <Grid.Col span={4}>
@@ -259,37 +311,46 @@ export function Classes() {
               />
             </Stack>
 
-            <Stack gap="xs">
-              {filteredClasses.map((cls) => (
-                <Card
-                  key={cls.id}
-                  padding="sm"
-                  radius="sm"
-                  withBorder
-                  style={{
-                    cursor: 'pointer',
-                    backgroundColor: selectedClassId === cls.id ? 'var(--mantine-color-blue-light)' : undefined
-                  }}
-                  onClick={() => setSelectedClassId(cls.id)}
-                >
-                  <Text size="sm" fw={500}>{cls.navn}</Text>
-                  <Group gap="xs" mt={4}>
-                    <Badge size="xs" color={
-                      cls.status === 'Igangværende' ? 'green' :
-                      cls.status === 'Fremtidig' ? 'blue' : 'gray'
-                    }>
-                      {cls.status}
-                    </Badge>
-                    <Text size="xs" c="dimmed">{cls.elevIds.length} elever</Text>
-                  </Group>
-                </Card>
-              ))}
-            </Stack>
+            {classesLoading ? (
+              <Stack align="center" justify="center" style={{ height: 200 }}>
+                <Loader size="lg" />
+                <Text c="dimmed">Henter hold...</Text>
+              </Stack>
+            ) : (
+              <>
+                <Stack gap="xs">
+                  {filteredClasses.map((cls) => (
+                    <Card
+                      key={cls.id}
+                      padding="sm"
+                      radius="sm"
+                      withBorder
+                      style={{
+                        cursor: 'pointer',
+                        backgroundColor: selectedClassId === cls.id ? 'var(--mantine-color-blue-light)' : undefined
+                      }}
+                      onClick={() => setSelectedClassId(cls.id)}
+                    >
+                      <Text size="sm" fw={500}>{cls.navn}</Text>
+                      <Group gap="xs" mt={4}>
+                        <Badge size="xs" color={
+                          cls.status === 'Igangværende' ? 'green' :
+                          cls.status === 'Fremtidig' ? 'blue' : 'gray'
+                        }>
+                          {cls.status}
+                        </Badge>
+                        <Text size="xs" c="dimmed">{cls.students?.length || 0} elever</Text>
+                      </Group>
+                    </Card>
+                  ))}
+                </Stack>
 
-            {filteredClasses.length === 0 && (
-              <Text c="dimmed" ta="center" mt="xl">
-                Ingen hold fundet
-              </Text>
+                {filteredClasses.length === 0 && (
+                  <Text c="dimmed" ta="center" mt="xl">
+                    Ingen hold fundet
+                  </Text>
+                )}
+              </>
             )}
           </Card>
         </Grid.Col>
@@ -309,9 +370,6 @@ export function Classes() {
                   </Group>
                 </Stack>
                 <Group gap="sm">
-                  <Button color="orange" onClick={handleSave}>
-                    Gem
-                  </Button>
                   {selectedClass.status !== 'Afsluttet' && (
                     <>
                       <Button
@@ -320,7 +378,7 @@ export function Classes() {
                         leftSection={<IconEdit size={16} />}
                         onClick={handleOpenEdit}
                       >
-                        Rediger
+                        Rediger hold
                       </Button>
                       <Button
                         variant="outline"
@@ -342,16 +400,25 @@ export function Classes() {
                     <Title order={5} mb="sm">
                       Elever uden hold i {selectedClass.modulperiode}
                     </Title>
+                    {selectedClass.status === 'Afsluttet' && (
+                      <Alert color="gray" variant="light" mb="sm">
+                        Dette hold er afsluttet. Elever kan ikke tilføjes.
+                      </Alert>
+                    )}
                     <ScrollArea style={{ height: 400 }}>
                       <Stack gap="xs">
                         {studentsWithoutClass.map(student => (
                           <Group key={student.id} justify="space-between">
-                            <Text size="sm">{student.navn}</Text>
+                            <Text size="sm" c={selectedClass.status === 'Afsluttet' ? 'dimmed' : undefined}>
+                              {student.navn}
+                            </Text>
                             <ActionIcon
                               variant="subtle"
                               color="blue"
                               onClick={() => handleAddStudentToClass(student.id)}
-                              title="Tilføj til hold"
+                              title={selectedClass.status === 'Afsluttet' ? 'Holdet er afsluttet' : 'Tilføj til hold'}
+                              disabled={selectedClass.status === 'Afsluttet'}
+                              style={{ cursor: selectedClass.status === 'Afsluttet' ? 'not-allowed' : 'pointer' }}
                             >
                               <IconArrowRight size={16} />
                             </ActionIcon>
@@ -380,6 +447,11 @@ export function Classes() {
                     <Title order={5} mb="sm">
                       Elever på holdet ({studentsInClass.length})
                     </Title>
+                    {selectedClass.status === 'Afsluttet' && (
+                      <Alert color="gray" variant="light" mb="sm">
+                        Dette hold er afsluttet. Elever kan ikke fjernes.
+                      </Alert>
+                    )}
                     <ScrollArea style={{ height: 400 }}>
                       <Stack gap="xs">
                         {studentsInClass.map(student => (
@@ -388,11 +460,15 @@ export function Classes() {
                               variant="subtle"
                               color="red"
                               onClick={() => handleRemoveStudentFromClass(student.id)}
-                              title="Fjern fra hold"
+                              title={selectedClass.status === 'Afsluttet' ? 'Holdet er afsluttet' : 'Fjern fra hold'}
+                              disabled={selectedClass.status === 'Afsluttet'}
+                              style={{ cursor: selectedClass.status === 'Afsluttet' ? 'not-allowed' : 'pointer' }}
                             >
                               <IconArrowLeft size={16} />
                             </ActionIcon>
-                            <Text size="sm">{student.navn}</Text>
+                            <Text size="sm" c={selectedClass.status === 'Afsluttet' ? 'dimmed' : undefined}>
+                              {student.navn}
+                            </Text>
                           </Group>
                         ))}
                         {studentsInClass.length === 0 && (
@@ -419,7 +495,10 @@ export function Classes() {
       {/* Create Class Modal */}
       <Modal
         opened={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
+        onClose={() => {
+          setCreateModalOpen(false)
+          setValidationError(null)
+        }}
         title="Opret nyt hold"
         size="md"
       >
@@ -450,11 +529,25 @@ export function Classes() {
           <Select
             label="Modulperiode"
             placeholder="Vælg modulperiode"
-            data={availableModulperioder.map(m => ({ value: m, label: m }))}
+            data={next3Modulperioder.map(m => {
+              const info = parseModulperiode(m)
+              const statusBadge = info.isCurrent ? ' 🟢' : ' 🔵'
+              return {
+                value: m, 
+                label: `${m}${statusBadge} (Modulperiode ${info.module}, ${info.isSpring ? 'Forår' : 'Efterår'} ${info.year})`
+              }
+            })}
             value={classForm.modulperiode}
-            onChange={(value) => setClassForm({ ...classForm, modulperiode: value || '' })}
-            searchable
+            onChange={(value) => {
+              setClassForm({ ...classForm, modulperiode: value || '' })
+              setValidationError(null) // Clear error when changing
+            }}
           />
+          {validationError && (
+            <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light">
+              {validationError}
+            </Alert>
+          )}
           {classForm.modulperiode && classForm.fag && classForm.lærer && (
             <Text size="sm" c="dimmed">
               Holdnavn: <strong>{generateClassName(classForm.modulperiode, classForm.fag, classForm.lærer)}</strong>
@@ -508,10 +601,16 @@ export function Classes() {
           <Select
             label="Modulperiode"
             placeholder="Vælg modulperiode"
-            data={availableModulperioder.map(m => ({ value: m, label: m }))}
+            data={next3Modulperioder.map(m => {
+              const info = parseModulperiode(m)
+              const statusBadge = info.isCurrent ? ' 🟢' : ' 🔵'
+              return {
+                value: m, 
+                label: `${m}${statusBadge} (Modulperiode ${info.module}, ${info.isSpring ? 'Forår' : 'Efterår'} ${info.year})`
+              }
+            })}
             value={classForm.modulperiode}
             onChange={(value) => setClassForm({ ...classForm, modulperiode: value || '' })}
-            searchable
           />
           {classForm.modulperiode && classForm.fag && classForm.lærer && (
             <Text size="sm" c="dimmed">
@@ -549,21 +648,6 @@ export function Classes() {
               Slet hold
             </Button>
           </Group>
-        </Stack>
-      </Modal>
-
-      {/* Save Success Modal */}
-      <Modal
-        opened={saveModalOpen}
-        onClose={() => setSaveModalOpen(false)}
-        title="Hold gemt"
-        centered
-      >
-        <Stack gap="md">
-          <Text>Holdændringerne er blevet gemt succesfuldt!</Text>
-          <Button fullWidth onClick={() => setSaveModalOpen(false)}>
-            Luk
-          </Button>
         </Stack>
       </Modal>
     </>

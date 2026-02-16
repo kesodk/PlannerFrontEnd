@@ -1,8 +1,12 @@
 # Troubleshooting Guide
 
+> ⚠️ **VIGTIGT:** Det eksterne API (`https://cv-pc-x-server:1102/api`) er sat på pause (Februar 2026).  
+> Systemet kører nu med mock/static data. Denne guide er primært historisk reference.  
+> Se [API_INTEGRATION.md](API_INTEGRATION.md) for aktuel status og fremtidig database plan.
+
 ## Almindelige Problemer og Løsninger
 
-### 1. CORS Errors
+### 1. CORS Errors (HISTORISK - ikke aktuelt længere)
 
 **Problem:** Browser blokerer requests med CORS error
 ```

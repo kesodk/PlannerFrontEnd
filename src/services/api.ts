@@ -10,9 +10,8 @@ const AUTH_CREDENTIALS = API_CONFIG.realApi.auth
 const TOKEN_KEY = 'auth_token'
 
 export interface LoginRequest {
-  username: string
+  email: string
   password: string
-  adUsername: string
 }
 
 export interface LoginResponse {

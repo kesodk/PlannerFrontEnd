@@ -1,6 +1,7 @@
 import { Modal, Stack, Grid, Title, Card, Text, Badge, Group } from '@mantine/core'
 import { IconMapPin, IconMail, IconPhone, IconCalendar, IconUser, IconSchool } from '@tabler/icons-react'
 import type { Student } from '../types/Student'
+import { formatDate } from '../utils/dateUtils'
 
 interface StudentViewModalProps {
   opened: boolean
@@ -10,15 +11,6 @@ interface StudentViewModalProps {
 
 export function StudentViewModal({ opened, onClose, student }: StudentViewModalProps) {
   if (!student) return null
-
-  const formatDate = (date: string) => {
-    if (!date) return '-'
-    try {
-      return new Date(date).toLocaleDateString('da-DK')
-    } catch {
-      return date
-    }
-  }
 
   return (
     <Modal 

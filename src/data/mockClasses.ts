@@ -1,3 +1,5 @@
+import { generateModulperioder, filterValidModulperioder, sortModulperioder } from '../utils/modulperiodeUtils'
+
 export interface ClassData {
   id: number
   navn: string
@@ -165,11 +167,9 @@ export const availableFag = [
   'AspITLab', 'AspITLab V', 'AspITLab S', 'AspITLab T'
 ]
 
-export const availableModulperioder = [
-  '24-1-M1', '24-1-M2', '24-1-M3',
-  '24-2-M1', '24-2-M2', '24-2-M3',
-  '25-1-M1', '25-1-M2', '25-1-M3',
-  '25-2-M1', '25-2-M2', '25-2-M3',
-  '26-1-M1', '26-1-M2', '26-1-M3',
-  '26-2-M1', '26-2-M2', '26-2-M3'
-]
+// Generer modulperioder dynamisk - kun fremtidige og igangværende
+const allModulperioder = generateModulperioder(2)
+export const availableModulperioder = sortModulperioder(
+  filterValidModulperioder(allModulperioder),
+  false // Sorter stigende (ældste først)
+)

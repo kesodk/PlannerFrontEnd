@@ -9,6 +9,7 @@ import { useSidebar } from '../contexts/SidebarContext'
 import { useStudents, useCreateStudent, useUpdateStudent, useDeleteStudent } from '../services/studentApi'
 import type { Student } from '../types/Student'
 import type { StudentFormData } from '../schemas/studentSchema'
+import { formatDate } from '../utils/dateUtils'
 
 export function Students() {
   const { colorScheme } = useMantineColorScheme()
@@ -380,12 +381,12 @@ export function Students() {
                   </Table.Td>
                   <Table.Td>
                     <Text size="sm">
-                      {student.startdato ? new Date(student.startdato).toLocaleDateString('da-DK') : '-'}
+                      {formatDate(student.startdato)}
                     </Text>
                   </Table.Td>
                   <Table.Td>
                     <Text size="sm">
-                      {student.slutdato ? new Date(student.slutdato).toLocaleDateString('da-DK') : '-'}
+                      {formatDate(student.slutdato)}
                     </Text>
                   </Table.Td>
                   <Table.Td>
