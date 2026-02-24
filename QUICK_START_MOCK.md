@@ -1,4 +1,11 @@
-# Quick Start: Mock API
+# ⚠️ DEPRECATED - Quick Start: Mock API
+
+> **Dette dokument er outdated.** Systemet bruger ikke længere mock API eller JSON Server.  
+> Se [GETTING_STARTED.md](./GETTING_STARTED.md) for aktuel opsætning med Laravel backend.
+
+---
+
+# Quick Start: Mock API (Historical Reference)
 
 ## 🚀 Kom i gang på 30 sekunder
 

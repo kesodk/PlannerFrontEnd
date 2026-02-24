@@ -1,62 +1,229 @@
 # API Integration Guide
 
-## ⚠️ STATUS: Backend udvikling sat på pause
+## ✅ Nuværende Status (Februar 2026)
 
-**Nuværende tilstand (Februar 2026):**
-- Det eksterne API (`https://cv-pc-x-server:1102/api`) er sat på pause
-- Systemet kører pt. med statisk mock data (`API_CONFIG.mode = 'static'`)
-- Fremtidig plan: Opbygning af egen MySQL database backend
+Systemet kører nu med **egen Laravel 12 backend** og **MySQL database** via XAMPP.
 
-## Oversigt
+- **Backend**: Laravel 12, PHP 8.3+
+- **Database**: MySQL via XAMPP
+- **Authentication**: Laravel Sanctum (Bearer token)
+- **API Base URL**: `http://localhost:8000/api`
 
-Projektet var midlertidigt integreret med test-API'et på `https://cv-pc-x-server:1102/api`, men dette is nu deaktiveret grundet udviklingsforsinkelser.
+## 🚀 API Oversigt
 
-## 🚀 Nuværende Setup
+### Base Configuration
 
-Systemet kører med statisk in-memory mock data. Denne tilstand konfigureres i `src/config/apiConfig.ts`:
+API konfiguration findes i `src/services/api.ts`:
 
 ```typescript
-export const API_CONFIG = {
-  mode: 'static', // Bruger in-memory mock data
-  // ...
+const API_BASE_URL = 'http://localhost:8000/api'
+
+// Authentication headers
+const getAuthHeaders = () => ({
+  'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+  'Content-Type': 'application/json',
+  'Accept': 'application/json'
+})
+```
+
+## 🔐 Authentication
+
+### Login
+
+**Endpoint**: `POST /api/auth/login`
+
+**Request:**
+```json
+{
+  "email": "admin@aspiring.dk",
+  "password": "password123"
 }
 ```
 
-### Mock Data Filer
-- `src/data/mockStudents.ts` - Elev test data
-- `src/data/mockClasses.ts` - Hold/klasse data
-- `src/data/mockEvaluations.ts` - Evaluerings data (formativ & summativ)
-- `src/data/mockAssessments.ts` - Bedømmelses data (karakterer)
-- `src/services/staticMockService.ts` - Service der håndterer mock data API calls
+**Response:**
+```json
+{
+  "token": "1|abc123...",
+  "user": {
+    "id": 1,
+    "name": "Admin",
+    "email": "admin@aspiring.dk"
+  }
+}
+```
 
-## 💾 Planlagt MySQL Database Struktur
+### Logout
 
-Følgende er en foreslået database struktur baseret på det eksisterende system:
+**Endpoint**: `POST /api/auth/logout`
 
-### Core Tabeller
+**Headers**: `Authorization: Bearer {token}`
 
-#### `students` - Elev information
+**Response**: `204 No Content`
+
+---
+
+## 👥 Students API
+
+### Get All Students
+
+**Endpoint**: `GET /api/students`
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "navn": "Anders Jensen",
+    "fødselsdato": "2005-03-15",
+    "cpr": "1503052345",
+    "adresse": "Skolegade 12, 8000 Aarhus C",
+    "telefonnr": "12345678",
+    "email": "anders@example.com",
+    "forældreNavn": "Lars og Mette Jensen",
+    "forældreTelefon": "87654321, 23456789",
+    "forældreAdresse": "Skolegade 12, 8000 Aarhus C",
+    "forældreEmail": "lars@example.com, mette@example.com",
+    "afdeling": "Trekanten",
+    "kursistnr": "K2024001",
+    "kommune": "Aarhus",
+    "lovgrundlag": "STU",
+    "vejlederNavn": "Jens Nielsen",
+    "vejlederTlf": "98765432",
+    "vejlederEmail": "jens@jobcenter.dk",
+    "startdato": "2024-08-01",
+    "slutdato": null,
+    "spor": "AspIT",
+    "status": "Indskrevet"
+  }
+]
+```
+
+### Get Single Student
+
+**Endpoint**: `GET /api/students/{id}`
+
+### Create Student
+
+**Endpoint**: `POST /api/students`
+
+**Request Body**: Same structure as student object above (without `id`)
+
+### Update Student
+
+**Endpoint**: `PUT /api/students/{id}`
+
+**Request Body**: Same structure as student object
+
+### Delete Student
+
+**Endpoint**: `DELETE /api/students/{id}`
+
+**Response**: `204 No Content`
+
+---
+
+## 📚 Classes API
+
+### Get All Classes
+
+**Endpoint**: `GET /api/classes`
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "navn": "26-1-M1-Intro til HTML og CSS-Anders",
+    "afdeling": "Trekanten",
+    "lærer": "Anders",
+    "fag": "Intro til HTML og CSS",
+    "modulperiode": "26-1-M1",
+    "startdato": "2026-01-05",
+    "slutdato": "2026-02-28",
+    "status": "Igangværende",
+    "students": [
+      {
+        "id": 1,
+        "navn": "Anders Jensen",
+        "afdeling": "Trekanten"
+      }
+    ]
+  }
+]
+```
+
+### Get Single Class
+
+**Endpoint**: `GET /api/classes/{id}`
+
+### Create Class
+
+**Endpoint**: `POST /api/classes`
+
+**Request:**
+```json
+{
+  "afdeling": "Trekanten",
+  "lærer": "Anders",
+  "fag": "Intro til HTML og CSS",
+  "modulperiode": "26-1-M2"
+}
+```
+
+**Response:** Created class object with auto-generated fields:
+- `navn`: Generated from `modulperiode-fag-lærer`
+- `startdato` & `slutdato`: Calculated from modulperiode
+- `status`: Auto-calculated based on dates
+
+### Update Class
+
+**Endpoint**: `PUT /api/classes/{id}`
+
+**Request:** Same structure as create
+
+### Delete Class
+
+**Endpoint**: `DELETE /api/classes/{id}`
+
+**Response**: `204 No Content`
+
+### Enroll Student
+
+**Endpoint**: `POST /api/classes/{classId}/enroll`
+
+**Request:**
+```json
+{
+  "student_id": 1
+}
+```
+
+### Unenroll Student
+
+**Endpoint**: `DELETE /api/classes/{classId}/students/{studentId}`
+
+**Response**: `204 No Content`
+
+---
+
+## 🏗️ Database Structure
+
+### Students Table
 ```sql
 CREATE TABLE students (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  
-  -- Personlige oplysninger
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   navn VARCHAR(255) NOT NULL,
   fødselsdato DATE NOT NULL,
-  cpr VARCHAR(11) UNIQUE,
+  cpr VARCHAR(11),
   adresse TEXT,
   telefonnr VARCHAR(20),
   email VARCHAR(255),
-  
-  -- Forældre information
   forældreNavn TEXT,
   forældreTelefon TEXT,
   forældreAdresse TEXT,
   forældreEmail TEXT,
-  
-  -- Uddannelsesoplysninger
   afdeling ENUM('Trekanten', 'Østjylland', 'Sønderjylland', 'Storkøbenhavn') NOT NULL,
-  kursistnr VARCHAR(50) UNIQUE,
+  kursistnr VARCHAR(50),
   kommune VARCHAR(100) NOT NULL,
   lovgrundlag ENUM('STU', 'LAB', 'Privat', 'Andet') NOT NULL,
   vejlederNavn VARCHAR(255),
@@ -65,39 +232,166 @@ CREATE TABLE students (
   startdato DATE NOT NULL,
   slutdato DATE,
   spor ENUM('AspIT', 'AspIN') NOT NULL,
-  status ENUM('UP/Afklaring', 'Indskrevet') NOT NULL DEFAULT 'Indskrevet',
-  
-  -- Metadata
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  
-  INDEX idx_afdeling (afdeling),
-  INDEX idx_status (status),
-  INDEX idx_spor (spor)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  status ENUM('UP/Afklaring', 'Indskrevet') NOT NULL,
+  created_at TIMESTAMP NULL,
+  updated_at TIMESTAMP NULL
+);
 ```
 
-#### `classes` - Hold/Klasser
+### Classes Table
 ```sql
 CREATE TABLE classes (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   navn VARCHAR(255) NOT NULL,
   afdeling ENUM('Trekanten', 'Østjylland', 'Sønderjylland', 'Storkøbenhavn') NOT NULL,
   lærer VARCHAR(50) NOT NULL,
   fag VARCHAR(100) NOT NULL,
-  modulperiode VARCHAR(20) NOT NULL, -- f.eks. "26-1-M1"
+  modulperiode VARCHAR(20) NOT NULL,
   startdato DATE NOT NULL,
   slutdato DATE NOT NULL,
-  status ENUM('Igangværende', 'Fremtidig', 'Afsluttet') NOT NULL DEFAULT 'Fremtidig',
-  
-  -- Metadata
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  
-  INDEX idx_status (status),
-  INDEX idx_modulperiode (modulperiode),
-  INDEX idx_lærer (lærer),
-  INDEX idx_afdeling (afdeling)
+  status ENUM('Igangværende', 'Fremtidig', 'Afsluttet') NOT NULL,
+  created_at TIMESTAMP NULL,
+  updated_at TIMESTAMP NULL
+);
+```
+
+### Class_Student Pivot Table
+```sql
+CREATE TABLE class_student (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  class_id BIGINT UNSIGNED NOT NULL,
+  student_id BIGINT UNSIGNED NOT NULL,
+  created_at TIMESTAMP NULL,
+  updated_at TIMESTAMP NULL,
+  FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+  FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+  UNIQUE KEY class_student_unique (class_id, student_id)
+);
+```
+
+---
+
+## 🔄 Frontend Integration
+
+### TanStack Query Hooks
+
+Students hooks findes i `src/services/studentApi.ts`:
+
+```typescript
+// Fetch all students
+const { data: students, isLoading } = useStudents()
+
+// Create student
+const createMutation = useCreateStudent()
+await createMutation.mutateAsync(studentData)
+
+// Update student  
+const updateMutation = useUpdateStudent()
+await updateMutation.mutateAsync({ id, data: studentData })
+
+// Delete student
+const deleteMutation = useDeleteStudent()
+await deleteMutation.mutateAsync(id)
+```
+
+Classes hooks findes i `src/services/classApi.ts`:
+
+```typescript
+// Fetch all classes
+const { data: classes } = useClasses()
+
+// Create class
+const createMutation = useCreateClass()
+await createMutation.mutateAsync(classData)
+
+// Enroll student
+const enrollMutation = useEnrollStudent()
+await enrollMutation.mutateAsync({ classId, studentId })
+
+// Unenroll student
+const unenrollMutation = useUnenrollStudent()
+await unenrollMutation.mutateAsync({ classId, studentId })
+```
+
+---
+
+## ⚠️ Error Handling
+
+API returnerer standard HTTP statuskoder:
+
+- `200` - Success
+- `201` - Created
+- `204` - No Content (success, no body)
+- `400` - Bad Request (validation error)
+- `401` - Unauthorized (invalid/missing token)
+- `404` - Not Found
+- `422` - Unprocessable Entity (validation errors)
+- `500` - Server Error
+
+Frontend håndterer errors via TanStack Query:
+
+```typescript
+const { data, isError, error } = useStudents()
+
+if (isError) {
+  console.error('API Error:', error)
+  // Show error message to user
+}
+```
+
+---
+
+## 🧪 Testing API
+
+### Manual Testing (PowerShell)
+
+```powershell
+# Login
+$response = Invoke-RestMethod -Uri "http://localhost:8000/api/auth/login" `
+  -Method POST -ContentType "application/json" `
+  -Body (@{email="admin@aspiring.dk"; password="password123"} | ConvertTo-Json)
+$token = $response.token
+
+# Get students
+Invoke-RestMethod -Uri "http://localhost:8000/api/students" `
+  -Headers @{Authorization="Bearer $token"}
+
+# Get classes
+Invoke-RestMethod -Uri "http://localhost:8000/api/classes" `
+  -Headers @{Authorization="Bearer $token"}
+```
+
+---
+
+## 📝 Seeded Data
+
+Database seeders opretter test data:
+
+- **Users**: 1 admin user (admin@aspiring.dk)
+- **Teachers**: 6 teachers (Anders, Bent, Christina, Dennis, Eva, Frank)
+- **Students**: 6 test students
+- **Classes**: 5 test classes med forskellige modulperioder
+
+---
+
+## 🚧 Ikke Implementeret Endnu
+
+Følgende features er planlagt men ikke implementeret:
+
+- **Attendance (Fremmøde)**: Daglig fremmøderegistrering
+- **Evaluations**: Formativ og summativ evaluering
+- **Assessments**: Karakterer og bedømmelser
+- **Teachers CRUD**: Administration af lærere
+- **Real-time updates**: SignalR integration
+
+---
+
+## 📚 Se Også
+
+- [GETTING_STARTED.md](./GETTING_STARTED.md) - Hvordan du starter systemet
+- [MODULPERIODER.md](./MODULPERIODER.md) - Forklaring af modulperiode systemet
+- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - Løsninger på almindelige problemer
+
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 

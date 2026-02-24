@@ -1,4 +1,11 @@
-# Mock API Guide
+# ⚠️ DEPRECATED - Mock API Guide
+
+> **Dette dokument er outdated.** Systemet bruger ikke længere mock API eller JSON Server.  
+> Se [GETTING_STARTED.md](./GETTING_STARTED.md) for aktuel opsætning med Laravel backend.
+
+---
+
+# Mock API Guide (Historical Reference)
 
 Dette projekt kan nu køre med enten en **mock API** (JSON Server) eller **rigtig backend**.
 

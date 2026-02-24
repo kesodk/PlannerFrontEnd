@@ -1,102 +1,213 @@
 # Troubleshooting Guide
 
-> ⚠️ **VIGTIGT:** Det eksterne API (`https://cv-pc-x-server:1102/api`) er sat på pause (Februar 2026).  
-> Systemet kører nu med mock/static data. Denne guide er primært historisk reference.  
-> Se [API_INTEGRATION.md](API_INTEGRATION.md) for aktuel status og fremtidig database plan.
+Løsninger på almindelige problemer med Student Administration System.
 
-## Almindelige Problemer og Løsninger
+## 🚀 Opstart Problemer
 
-### 1. CORS Errors (HISTORISK - ikke aktuelt længere)
+### Backend starter ikke
+
+**Problem:** `php artisan serve` fejler eller viser errors
+
+**Løsninger:**
+1. Check PHP version: `php --version` (skal være 8.3+)
+2. Check at port 8000 er ledig:
+   ```powershell
+   netstat -ano | findstr :8000
+   ```
+3. Check .env fil - verificer database credentials
+4. Kør migrations igen:
+   ```bash
+   php artisan migrate:fresh --seed
+   ```
+
+### Database connection error
+
+**Problem:** `SQLSTATE[HY000] [2002] Connection refused`
+
+**Løsninger:**
+1. Check at XAMPP MySQL kører
+2. Verificer database credentials i `.env`:
+   ```
+   DB_DATABASE=student_admin
+   DB_USERNAME=root
+   DB_PASSWORD=
+   ```
+3. Opret database manuelt hvis den ikke findes:
+   ```bash
+   mysql -u root -p -e "CREATE DATABASE student_admin"
+   ```
+
+### Frontend starter ikke
+
+**Problem:** `npm run dev` fejler
+
+**Løsninger:**
+1. Slet `node_modules` og reinstaller:
+   ```bash
+   rm -rf node_modules
+   npm install
+   ```
+2. Check Node.js version: `node --version` (skal være 18+)
+3. Check at port 5174 er ledig
+
+---
+
+## 🔌 API Connection Problemer
+
+### 401 Unauthorized
+
+**Problem:** API requests fejler med 401 status
+
+**Løsninger:**
+1. Check at du er logget ind
+2. Check at token er gemt i localStorage:
+   ```javascript
+   localStorage.getItem('authToken')
+   ```
+3. Log ud og ind igen
+4. Check browser console for errors
+
+### CORS Errors
 
 **Problem:** Browser blokerer requests med CORS error
-```
-Access to fetch at 'https://cv-pc-x-server:1102/api/...' from origin 'http://localhost:5173' has been blocked by CORS policy
-```
 
-**Løsning 1: Backend skal tilføje CORS headers**
-```csharp
-// I Startup.cs eller Program.cs
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowLocalhost",
-        builder => builder
-            .WithOrigins("http://localhost:5173")
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials());
-});
+**Løsninger:**
+1. Check at Laravel backend CORS er konfigureret korrekt
+2. Verificer at `config/cors.php` inkluderer frontend URL:
+   ```php
+   'allowed_origins' => ['http://localhost:5174']
+   ```
+3. Clear browser cache og reload
 
-app.UseCors("AllowLocalhost");
-```
+### 422 Validation Error
 
-**Løsning 2: Brug Vite proxy** (midlertidig løsning)
-```typescript
-// vite.config.ts
-export default defineConfig({
-  server: {
-    proxy: {
-      '/api': {
-        target: 'https://cv-pc-x-server:1102',
-        changeOrigin: true,
-        secure: false, // For self-signed certificates
-      }
-    }
-  }
-})
-```
+**Problem:** API returnerer validation errors ved create/update
 
-Derefter i `api.ts`:
-```typescript
-const API_BASE_URL = '/api' // I stedet for fuld URL
-```
+**Løsninger:**
+1. Check request payload i Network tab
+2. Verificer alle required felter er udfyldt:
+   - Students: navn, fødselsdato, afdeling, kommune, lovgrundlag, startdato, spor, status
+   - Classes: afdeling, lærer, fag, modulperiode
+3. Check dato format (skal være YYYY-MM-DD)
+4. Check enum values matcher backend
 
-### 2. HTTPS Certificate Errors
+---
 
-**Problem:** Browser viser "Your connection is not private" eller fetch fejler med certificate error
+## 📅 Modulperiode Problemer
 
-**Løsning:**
-1. Åbn `https://cv-pc-x-server:1102/api/auth/login` direkte i browser
-2. Klik "Advanced" → "Proceed to cv-pc-x-server (unsafe)"
-3. Reload din React app
+### Kan ikke oprette hold
 
-**Alternativ for Development:**
-```typescript
-// KUN TIL DEVELOPMENT - ALDRIG I PRODUKTION
-// I Node.js environment (ikke browser)
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-```
+**Problem:** "Kan ikke oprette hold for tidligere modulperioder"
 
-### 3. Authentication Fejler
+**Forklaring:** Dette er forventet adfærd - systemet forhindrer oprettelse af hold for perioder der er forbi.
 
-**Problem:** Login returnerer 401 eller 403
+**Løsning:** Vælg en nuværende eller fremtidig modulperiode.
 
-**Debug steps:**
-1. Verificer credentials i `api.ts` er korrekte
-2. Check at API'et kører på den rigtige port
-3. Se Network tab i DevTools for response body
-4. Test login manuelt med Postman/Thunder Client
+### Kan ikke redigere hold
 
-**Test med curl:**
-```bash
-curl -X POST https://cv-pc-x-server:1102/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "ApiUser",
-    "password": "6sLY2kOz4+L1IZGboOHlv52nfgkNk2aZAaygijy8NCw=",
-    "adUsername": "cv\\keso"
-  }'
-```
+**Problem:** "Rediger hold" knappen er ikke synlig
 
-### 4. Data Mapping Fejl
+**Forklaring:** Hold med status "Afsluttet" kan ikke redigeres.
 
-**Problem:** Data vises forkert eller komponenter crasher
+**Løsning:** Dette er forventet beskyttelse - afsluttede hold skal ikke kunne ændres.
 
-**Debug:**
-1. Åbn browser console
-2. Kig efter TypeScript fejl
-3. Check `studentApi.ts` mappings:
-   - `mapDtoToStudent` - API → App
-   - `mapStudentToDto` - App → API
+---
+
+## 🗃️ Data Problemer
+
+### Elever vises ikke
+
+**Problem:** Students siden er tom efter login
+
+**Løsninger:**
+1. Check API response i Network tab
+2. Seed database hvis den er tom:
+   ```bash
+   php artisan db:seed
+   ```
+3. Check console for JavaScript errors
+4. Verificer TanStack Query cache er ikke korrupt:
+   ```javascript
+   // I browser console
+   localStorage.clear()
+   location.reload()
+   ```
+
+### Ændringer gemmes ikke
+
+**Problem:** Opdateringer forsvinder efter reload
+
+**Løsninger:**
+1. Check backend logs: `storage/logs/laravel.log`
+2. Verificer database update faktisk sker:
+   ```sql
+   SELECT * FROM students WHERE id = ?;
+   ```
+3. Check TanStack Query mutation callbacks
+4. Check Network tab for API response
+
+---
+
+## 🔍 Debug Tips
+
+### Browser DevTools
+
+1. **Console**: Check for JavaScript errors
+2. **Network**: Inspect API requests og responses
+   - Check request payload
+   - Check response status code og body
+   - Check request headers (Authorization token)
+3. **Application > Local Storage**: Check authToken
+
+### Laravel Debug
+
+1. Check logs:
+   ```bash
+   tail -f storage/logs/laravel.log
+   ```
+2. Enable debug mode i `.env`:
+   ```
+   APP_DEBUG=true
+   ```
+3. Test API manually med PowerShell:
+   ```powershell
+   $token = (Invoke-RestMethod -Uri "http://localhost:8000/api/auth/login" `
+     -Method POST -ContentType "application/json" `
+     -Body (@{email="admin@aspiring.dk"; password="password123"} | ConvertTo-Json)).token
+     
+   Invoke-RestMethod -Uri "http://localhost:8000/api/students" `
+     -Headers @{Authorization="Bearer $token"}
+   ```
+
+---
+
+## 🆘 Stadig Problemer?
+
+Hvis problemet fortsætter:
+
+1. **Genstart alt**:
+   - Stop backend (Ctrl+C)
+   - Stop frontend (Ctrl+C)
+   - Stop XAMPP MySQL
+   - Start XAMPP MySQL
+   - Start backend
+   - Start frontend
+
+2. **Fresh Install**:
+   ```bash
+   # Backend
+   php artisan migrate:fresh --seed
+   
+   # Frontend
+   rm -rf node_modules
+   npm install
+   ```
+
+3. **Check dokumentation**:
+   - [GETTING_STARTED.md](./GETTING_STARTED.md)
+   - [API_INTEGRATION.md](./API_INTEGRATION.md)
+
+---
 
 **Test mapping:**
 ```typescript
