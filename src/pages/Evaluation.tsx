@@ -14,59 +14,87 @@ import {
   Modal,
   ActionIcon,
   Tooltip,
-  Paper
+  Paper,
+  Loader,
+  Center,
+  Overlay,
+  Divider,
+  SegmentedControl,
+  Alert
 } from '@mantine/core'
-import { IconBold, IconItalic, IconUnderline, IconStrikethrough, IconList, IconListNumbers, IconClearFormatting, IconCheck } from '@tabler/icons-react'
+import { IconBold, IconItalic, IconUnderline, IconStrikethrough, IconList, IconListNumbers, IconClearFormatting, IconCheck, IconX, IconTrash, IconPlus, IconFileTypePdf, IconFileWord, IconFileText } from '@tabler/icons-react'
+import { notifications } from '@mantine/notifications'
 import { useStudents } from '../services/studentApi'
-import { mockClasses, availableFag } from '../data/mockClasses'
-import { mockEvaluations } from '../data/mockEvaluations'
+import { useClasses } from '../services/classApi'
+import { useEvaluations, useCreateEvaluation, useUpdateEvaluation, useDeleteEvaluation, useExportEvaluation } from '../services/evaluationApi'
+import { availableFag } from '../data/mockClasses'
 import type { Evaluation, EvaluationGoal } from '../types/Evaluation'
 
 // Global Toolbar Component
-function GlobalToolbar() {
+function GlobalToolbar({ onExport, onStu, onSave, isSaving }: {
+  onExport?: () => void
+  onStu?: () => void
+  onSave?: () => void
+  isSaving?: boolean
+}) {
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value)
   }
 
   return (
-    <Paper shadow="sm" p="xs" mb="md" withBorder style={{ position: 'sticky', top: 0, zIndex: 100, backgroundColor: 'var(--mantine-color-body)' }}>
-      <Group gap="xs">
-        <Text size="sm" fw={500} mr="xs">Formatering:</Text>
-        <Tooltip label="Fed">
-          <ActionIcon variant="default" onClick={() => execCommand('bold')}>
-            <IconBold size={18} />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label="Kursiv">
-          <ActionIcon variant="default" onClick={() => execCommand('italic')}>
-            <IconItalic size={18} />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label="Understreget">
-          <ActionIcon variant="default" onClick={() => execCommand('underline')}>
-            <IconUnderline size={18} />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label="Gennemstreget">
-          <ActionIcon variant="default" onClick={() => execCommand('strikeThrough')}>
-            <IconStrikethrough size={18} />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label="Punktliste">
-          <ActionIcon variant="default" onClick={() => execCommand('insertUnorderedList')}>
-            <IconList size={18} />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label="Nummereret liste">
-          <ActionIcon variant="default" onClick={() => execCommand('insertOrderedList')}>
-            <IconListNumbers size={18} />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label="Ryd formatering">
-          <ActionIcon variant="default" onClick={() => execCommand('removeFormat')}>
-            <IconClearFormatting size={18} />
-          </ActionIcon>
-        </Tooltip>
+    <Paper shadow="sm" p="sm" mb="md" withBorder style={{ position: 'sticky', top: 0, zIndex: 100, backgroundColor: 'var(--mantine-color-body)' }}>
+      <Group justify="space-between" wrap="nowrap">
+        <Group gap="sm">
+          <Text size="sm" fw={500} mr="xs">Formatering:</Text>
+          <Tooltip label="Fed">
+            <ActionIcon variant="default" size="lg" onClick={() => execCommand('bold')}>
+              <IconBold size={20} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="Kursiv">
+            <ActionIcon variant="default" size="lg" onClick={() => execCommand('italic')}>
+              <IconItalic size={20} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="Understreget">
+            <ActionIcon variant="default" size="lg" onClick={() => execCommand('underline')}>
+              <IconUnderline size={20} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="Gennemstreget">
+            <ActionIcon variant="default" size="lg" onClick={() => execCommand('strikeThrough')}>
+              <IconStrikethrough size={20} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="Punktliste">
+            <ActionIcon variant="default" size="lg" onClick={() => execCommand('insertUnorderedList')}>
+              <IconList size={20} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="Nummereret liste">
+            <ActionIcon variant="default" size="lg" onClick={() => execCommand('insertOrderedList')}>
+              <IconListNumbers size={20} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="Ryd formatering">
+            <ActionIcon variant="default" size="lg" onClick={() => execCommand('removeFormat')}>
+              <IconClearFormatting size={20} />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
+        {onSave && (
+          <Group gap="sm" wrap="nowrap">
+            <Button size="sm" color="blue" variant="outline" onClick={onExport}>
+              Eksporter til fil
+            </Button>
+            <Button size="sm" color="teal" variant="outline" onClick={onStu}>
+              STU-indstilling
+            </Button>
+            <Button size="sm" color="orange" onClick={onSave} loading={isSaving}>
+              Gem
+            </Button>
+          </Group>
+        )}
       </Group>
     </Paper>
   )
@@ -102,10 +130,10 @@ function EditableField({ value, onChange }: { value: string; onChange: (value: s
       onInput={handleInput}
       onPaste={handlePaste}
       style={{
-        minHeight: '60px',
+        minHeight: '70px',
         width: '100%',
         maxWidth: '100%',
-        padding: '8px',
+        padding: '10px 12px',
         outline: 'none',
         cursor: 'text',
         textAlign: 'left',
@@ -114,7 +142,12 @@ function EditableField({ value, onChange }: { value: string; onChange: (value: s
         wordWrap: 'break-word',
         overflowWrap: 'break-word',
         boxSizing: 'border-box',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        fontSize: '14px',
+        lineHeight: '1.65',
+        letterSpacing: '0.01em',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        color: 'var(--mantine-color-text)',
       }}
     />
   )
@@ -124,40 +157,66 @@ export function Evaluation() {
   const [selectedHoldId, setSelectedHoldId] = useState<number | null>(null)
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null)
   const [evaluationType, setEvaluationType] = useState<'Formativ' | 'Summativ'>('Formativ')
-  const [evaluations, setEvaluations] = useState<Evaluation[]>(mockEvaluations)
   const [currentEvaluation, setCurrentEvaluation] = useState<Evaluation | null>(null)
   const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [exportModalOpen, setExportModalOpen] = useState(false)
+  const [exportScope, setExportScope] = useState<'formativ' | 'summativ'>('formativ')
   const [stuModalOpen, setStuModalOpen] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [evaluationToDelete, setEvaluationToDelete] = useState<number | null>(null)
+  const [shaking, setShaking] = useState(false)
 
-  const { data: students = [] } = useStudents()
+  const { data: students = [], isLoading: studentsLoading } = useStudents()
+  const { data: classes = [], isLoading: classesLoading } = useClasses()
+  const { data: evaluations = [], isLoading: evaluationsLoading } = useEvaluations()
+  const createEvaluation = useCreateEvaluation()
+  const updateEvaluation = useUpdateEvaluation()
+  const deleteEvaluation = useDeleteEvaluation()
+  const exportEvaluation = useExportEvaluation()
 
-  // Get classes with igangværende status
-  const activeClasses = mockClasses.filter(c => c.status === 'Igangværende')
+  // Shake animation interval – fires every 3 seconds when no evaluation is loaded
+  useEffect(() => {
+    if (selectedStudentId && !currentEvaluation) {
+      // trigger immediately on student select
+      setShaking(true)
+      const shakeTimeout = setTimeout(() => setShaking(false), 600)
+      const interval = setInterval(() => {
+        setShaking(true)
+        setTimeout(() => setShaking(false), 600)
+      }, 12000)
+      return () => {
+        clearInterval(interval)
+        clearTimeout(shakeTimeout)
+      }
+    }
+  }, [selectedStudentId, currentEvaluation])
 
-  // Get students in selected class
+  // Get active classes (Igangværende)
+  const activeClasses = classes.filter(c => c.status === 'Igangværende')
+
+  // Get students enrolled in selected class
   const studentsInClass = selectedHoldId
-    ? students.filter(s => {
-        const classData = mockClasses.find(c => c.id === selectedHoldId)
-        return classData?.elevIds.includes(s.id)
-      })
+    ? students.filter(s => 
+        classes.find(c => c.id === selectedHoldId)?.students?.some(enrolled => enrolled.id === s.id)
+      )
     : []
 
-  // Get evaluations for selected student
+  // Get evaluations for selected student (only include evaluations with valid ID)
   const studentEvaluations = selectedStudentId
-    ? evaluations.filter(e => e.studentId === selectedStudentId).sort((a, b) => 
-        new Date(b.dato).getTime() - new Date(a.dato).getTime()
-      )
+    ? evaluations
+        .filter(e => e.studentId === selectedStudentId && e.id)
+        .sort((a, b) => 
+          new Date(b.dato).getTime() - new Date(a.dato).getTime()
+        )
     : []
 
   // Initialize empty evaluation
   const initializeNewEvaluation = () => {
     if (!selectedStudentId || !selectedHoldId) return
 
-    const classData = mockClasses.find(c => c.id === selectedHoldId)
+    const classData = classes.find(c => c.id === selectedHoldId)
     
     const newEvaluation: Evaluation = {
-      id: Math.max(...evaluations.map(e => e.id)) + 1,
       studentId: selectedStudentId,
       holdId: selectedHoldId,
       type: evaluationType,
@@ -252,18 +311,55 @@ export function Evaluation() {
   }
 
   // Save evaluation
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!currentEvaluation) return
 
-    const existingIndex = evaluations.findIndex(e => e.id === currentEvaluation.id)
-    
-    if (existingIndex >= 0) {
-      setEvaluations(prev => prev.map(e => e.id === currentEvaluation.id ? currentEvaluation : e))
-    } else {
-      setEvaluations(prev => [...prev, currentEvaluation])
-    }
+    try {
+      // Ensure type always matches the active tab
+      const evaluationToSave = { ...currentEvaluation, type: evaluationType }
 
-    setSaveModalOpen(true)
+      // Check if this is an existing evaluation (has valid id and exists in fetched list)
+      const isExisting = evaluationToSave.id && evaluationToSave.id > 0 && 
+        evaluations.some(e => e.id === evaluationToSave.id)
+      
+      if (isExisting) {
+        // Update existing
+        const updated = await updateEvaluation.mutateAsync(evaluationToSave)
+        if (updated) setCurrentEvaluation(updated)
+      } else {
+        // Create new - strip id if present
+        const { id, ...evaluationData } = evaluationToSave as any
+        const created = await createEvaluation.mutateAsync(evaluationData)
+        // Update local state with returned ID so subsequent saves do updates
+        if (created?.id) setCurrentEvaluation({ ...evaluationToSave, id: created.id })
+      }
+      setSaveModalOpen(true)
+    } catch (error: any) {
+      console.error('Failed to save evaluation:', error)
+      const msg = error?.message || JSON.stringify(error) || 'Ukendt fejl'
+      alert(`Evalueringen kunne ikke gemmes:\n${msg}`)
+    }
+  }
+
+  // Delete evaluation
+  const handleDelete = async () => {
+    if (!evaluationToDelete) return
+
+    try {
+      await deleteEvaluation.mutateAsync(evaluationToDelete)
+      setDeleteModalOpen(false)
+      setEvaluationToDelete(null)
+      // Clear current evaluation if it was the one deleted
+      if (currentEvaluation?.id === evaluationToDelete) {
+        setCurrentEvaluation(null)
+      }
+    } catch (error: any) {
+      console.error('❌ Failed to delete evaluation:', error)
+      // Close modal and show error
+      setDeleteModalOpen(false)
+      setEvaluationToDelete(null)
+      alert(`Kunne ikke slette evaluering: ${error?.message || 'Ukendt fejl'}`)
+    }
   }
 
   // Handle class selection
@@ -276,11 +372,20 @@ export function Evaluation() {
   // Handle student selection
   const handleStudentSelect = (studentId: number) => {
     setSelectedStudentId(studentId)
-    initializeNewEvaluation()
+    setCurrentEvaluation(null)
   }
 
-  const selectedClass = mockClasses.find(c => c.id === selectedHoldId)
+  const selectedClass = classes.find(c => c.id === selectedHoldId)
   const selectedStudent = students.find(s => s.id === selectedStudentId)
+
+  // Show loading state
+  if (studentsLoading || classesLoading || evaluationsLoading) {
+    return (
+      <Center h={400}>
+        <Loader size="lg" />
+      </Center>
+    )
+  }
 
   return (
     <>
@@ -307,7 +412,7 @@ export function Evaluation() {
                     <Text size="xs">{cls.lærer}</Text>
                   </Group>
                   <Text size="xs" c="dimmed">{cls.modulperiode}</Text>
-                  <Text size="xs" c="dimmed">{cls.elevIds.length} elever</Text>
+                  <Text size="xs" c="dimmed">{cls.students?.length || 0} elever</Text>
                 </Card>
               ))}
             </Stack>
@@ -339,35 +444,141 @@ export function Evaluation() {
 
         {/* Midter kolonne - Evalueringsformular */}
         <Grid.Col span={8}>
-          {currentEvaluation && selectedStudent && selectedClass ? (
+          {selectedStudent && selectedClass && !currentEvaluation ? (
+            /* Greyed-out placeholder when student selected but no evaluation loaded */
+            <Card shadow="sm" padding="lg" radius="md" withBorder style={{ height: 'calc(100vh - 120px)', overflow: 'hidden', position: 'relative' }}>
+              {/* Ghost form structure - visually disabled */}
+              <div style={{ opacity: 0.12, pointerEvents: 'none', userSelect: 'none' }}>
+                <Group justify="space-between" mb="md">
+                  <Stack gap={4}>
+                    <Title order={3}>{selectedStudent.navn}</Title>
+                    <Group gap="md">
+                      <Text size="sm" c="dimmed">Dato: {new Date().toLocaleDateString('da-DK')}</Text>
+                      <Text size="sm" c="dimmed">Modulperiode: {selectedClass.modulperiode}</Text>
+                      <Text size="sm" c="dimmed">Oprettet af: KESO</Text>
+                    </Group>
+                  </Stack>
+                  <Group gap="xs">
+                    <Button color="blue" variant="outline">Eksporter til fil</Button>
+                    <Button color="teal" variant="outline">STU-indstilling</Button>
+                    <Button color="orange">Gem</Button>
+                  </Group>
+                </Group>
+                <Stack gap="lg" mt="md">
+                  {['Fagligt mål', 'Personligt mål', 'Socialt mål', 'Arbejdsmæssigt mål'].map(title => (
+                    <div key={title}>
+                      <Title order={5} mb="xs" style={{ backgroundColor: '#194541', color: 'white', padding: '8px 12px', borderRadius: '4px' }}>
+                        {title}
+                      </Title>
+                      <Table withTableBorder style={{ tableLayout: 'fixed' }}>
+                        <Table.Thead>
+                          <Table.Tr style={{ backgroundColor: '#29675a' }}>
+                            <Table.Th style={{ color: 'white' }}>Individuelle mål</Table.Th>
+                            <Table.Th style={{ color: 'white' }}>Læringsmål</Table.Th>
+                            <Table.Th style={{ color: 'white' }}>Indhold og handlinger</Table.Th>
+                            <Table.Th style={{ color: 'white' }}>Opfyldelseskriterier</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          <Table.Tr>
+                            <Table.Td style={{ height: 64 }} />
+                            <Table.Td />
+                            <Table.Td />
+                            <Table.Td />
+                          </Table.Tr>
+                        </Table.Tbody>
+                      </Table>
+                    </div>
+                  ))}
+                </Stack>
+              </div>
+              {/* Overlay + top-aligned message */}
+              <Overlay backgroundBlur={1} opacity={0.25} zIndex={10} />
+              <style>{`
+                @keyframes shake {
+                  0%   { transform: translateX(0); }
+                  15%  { transform: translateX(-8px); }
+                  30%  { transform: translateX(8px); }
+                  45%  { transform: translateX(-6px); }
+                  60%  { transform: translateX(6px); }
+                  75%  { transform: translateX(-3px); }
+                  90%  { transform: translateX(3px); }
+                  100% { transform: translateX(0); }
+                }
+                .shake-box { animation: none; }
+                .shake-box.shaking { animation: shake 0.55s ease-in-out; }
+              `}</style>
+              <div style={{ position: 'absolute', inset: 0, zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', flexDirection: 'column', paddingTop: 80 }}>
+                <Paper
+                  className={`shake-box${shaking ? ' shaking' : ''}`}
+                  shadow="md"
+                  radius="md"
+                  p="lg"
+                  withBorder
+                  style={{
+                    backgroundColor: 'var(--mantine-color-body)',
+                    borderColor: 'var(--mantine-color-gray-3)',
+                    textAlign: 'center',
+                    maxWidth: 420,
+                    margin: '0 auto',
+                    width: '100%'
+                  }}
+                >
+                  {studentEvaluations.length === 0 ? (
+                    <Stack gap={6} align="center">
+                      <Text fw={700} size="lg">Eleven har ingen evalueringer endnu</Text>
+                      <Text size="sm" c="dimmed">Tryk „Opret evaluering“ i højre side for at begynde</Text>
+                    </Stack>
+                  ) : (
+                    <Stack gap={6} align="center">
+                      <Text fw={700} size="lg">Ingen evaluering valgt</Text>
+                      <Text size="sm" c="dimmed">Vælg en evaluering fra listen, eller opret en ny</Text>
+                    </Stack>
+                  )}
+                </Paper>
+              </div>
+            </Card>
+          ) : currentEvaluation && selectedStudent && selectedClass ? (
             <Card shadow="sm" padding="lg" radius="md" withBorder style={{ height: 'calc(100vh - 120px)', overflow: 'auto' }}>
               <Group justify="space-between" mb="md">
                 <Stack gap={4}>
                   <Title order={3}>{selectedStudent.navn}</Title>
                   <Group gap="md">
-                    <Text size="sm" c="dimmed">Dato: {currentEvaluation.dato}</Text>
+                    <Text size="sm" c="dimmed">
+                      Dato: {(() => {
+                        const [year, month, day] = currentEvaluation.dato.split('-')
+                        return `${day}-${month}-${year}`
+                      })()}
+                    </Text>
                     <Text size="sm" c="dimmed">Modulperiode: {currentEvaluation.modulperiode}</Text>
                     <Text size="sm" c="dimmed">Oprettet af: {currentEvaluation.oprettetAf}</Text>
                   </Group>
                 </Stack>
-                <Group gap="xs">
-                  <Button color="blue" variant="outline" onClick={() => setExportModalOpen(true)}>
-                    Eksporter til fil
-                  </Button>
-                  <Button color="teal" variant="outline" onClick={() => setStuModalOpen(true)}>
-                    STU-indstilling
-                  </Button>
-                  <Button color="orange" onClick={handleSave}>
-                    Gem
-                  </Button>
-                </Group>
               </Group>
 
-              <GlobalToolbar />
+              <GlobalToolbar
+                onExport={() => {
+                  setExportScope(evaluationType.toLowerCase() as 'formativ' | 'summativ')
+                  setExportModalOpen(true)
+                }}
+                onStu={() => setStuModalOpen(true)}
+                onSave={handleSave}
+                isSaving={createEvaluation.isPending || updateEvaluation.isPending}
+              />
 
               <Tabs 
                 value={evaluationType} 
-                onChange={(value) => setEvaluationType(value as 'Formativ' | 'Summativ')} 
+                onChange={(value) => {
+                  const newType = value as 'Formativ' | 'Summativ'
+                  setEvaluationType(newType)
+                  // Auto-load the newest evaluation for the selected tab, if one exists
+                  const newest = studentEvaluations.find(e => e.type === newType)
+                  if (newest?.id) {
+                    loadEvaluation(newest.id)
+                  } else {
+                    setCurrentEvaluation(null)
+                  }
+                }} 
                 mb="md"
               >
                 <Tabs.List 
@@ -770,7 +981,7 @@ export function Evaluation() {
           ) : (
             <Card shadow="sm" padding="lg" radius="md" withBorder style={{ height: 'calc(100vh - 120px)' }}>
               <Stack align="center" justify="center" style={{ height: '100%' }}>
-                <Text c="dimmed" size="lg">Vælg et hold og en elev for at oprette eller se evaluering</Text>
+                <Text c="dimmed" size="lg">Vælg et hold og en elev for at se eller oprette en evaluering</Text>
               </Stack>
             </Card>
           )}
@@ -785,6 +996,19 @@ export function Evaluation() {
             
             {selectedStudentId ? (
               <Stack gap="xs">
+                {/* Opret evaluering knap */}
+                <Button
+                  leftSection={<IconPlus size={16} />}
+                  color="green"
+                  variant="filled"
+                  fullWidth
+                  onClick={() => initializeNewEvaluation()}
+                >
+                  Opret evaluering
+                </Button>
+                {studentEvaluations.filter(e => e.type === evaluationType).length > 0 && (
+                  <Divider label="Tidligere evalueringer" labelPosition="center" mt="xs" />
+                )}
                 {studentEvaluations
                   .filter(e => e.type === evaluationType)
                   .map((evaluation) => (
@@ -793,12 +1017,39 @@ export function Evaluation() {
                       padding="xs"
                       radius="sm"
                       withBorder
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => loadEvaluation(evaluation.id)}
+                      style={{ position: 'relative' }}
                     >
-                      <Text size="sm" fw={500}>{evaluation.oprettetAf}</Text>
-                      <Text size="xs" c="dimmed">{evaluation.dato}</Text>
-                      <Text size="xs" c="dimmed">{evaluation.modulperiode}</Text>
+                      <div style={{ cursor: 'pointer' }} onClick={() => loadEvaluation(evaluation.id)}>
+                        <Text size="sm" fw={500}>{evaluation.oprettetAf}</Text>
+                        <Text size="xs" c="dimmed">
+                          {evaluation.createdAt ? (() => {
+                            const date = new Date(evaluation.createdAt)
+                            const day = String(date.getDate()).padStart(2, '0')
+                            const month = String(date.getMonth() + 1).padStart(2, '0')
+                            const year = date.getFullYear()
+                            const hours = String(date.getHours()).padStart(2, '0')
+                            const minutes = String(date.getMinutes()).padStart(2, '0')
+                            const seconds = String(date.getSeconds()).padStart(2, '0')
+                            return `${day}-${month}-${year} kl. ${hours}:${minutes}:${seconds}`
+                          })() : evaluation.dato}
+                        </Text>
+                        <Text size="xs" c="dimmed">{evaluation.modulperiode}</Text>
+                      </div>
+                      {evaluation.id && (
+                        <ActionIcon
+                          color="red"
+                          variant="subtle"
+                          size="sm"
+                          style={{ position: 'absolute', top: 4, right: 4 }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEvaluationToDelete(evaluation.id!)
+                            setDeleteModalOpen(true)
+                          }}
+                        >
+                          <IconX size={16} />
+                        </ActionIcon>
+                      )}
                     </Card>
                   ))}
                 {studentEvaluations.filter(e => e.type === evaluationType).length === 0 && (
@@ -832,18 +1083,180 @@ export function Evaluation() {
         </Stack>
       </Modal>
 
-      {/* Export Modal */}
+      {/* Delete Modal */}
       <Modal
-        opened={exportModalOpen}
-        onClose={() => setExportModalOpen(false)}
-        title="Eksporter til fil"
+        opened={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false)
+          setEvaluationToDelete(null)
+        }}
+        title="Slet evaluering"
         centered
       >
         <Stack gap="md">
-          <Text>Denne funktionalitet er under udvikling og vil snart være tilgængelig.</Text>
-          <Text size="sm" c="dimmed">Du vil kunne eksportere evalueringen som PDF eller Word-dokument.</Text>
-          <Button fullWidth onClick={() => setExportModalOpen(false)}>
-            Luk
+          <Group>
+            <IconTrash size={24} color="red" />
+            <Text>Er du sikker på at du vil slette denne evaluering?</Text>
+          </Group>
+          <Text size="sm" c="dimmed">
+            Denne handling kan ikke fortrydes.
+          </Text>
+          <Group justify="flex-end" gap="xs">
+            <Button 
+              variant="default" 
+              onClick={() => {
+                setDeleteModalOpen(false)
+                setEvaluationToDelete(null)
+              }}
+            >
+              Annuller
+            </Button>
+            <Button 
+              color="red" 
+              onClick={handleDelete}
+              loading={deleteEvaluation.isPending}
+            >
+              Slet
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Export Modal */}
+      <Modal
+        opened={exportModalOpen}
+        onClose={() => {
+          if (!exportEvaluation.isPending) setExportModalOpen(false)
+        }}
+        title="Eksportér til fil"
+        centered
+        size="sm"
+      >
+        <Stack gap="md">
+          {/* Scope selector */}
+          <div>
+            <Text size="sm" fw={500} mb={6}>Indhold</Text>
+            <SegmentedControl
+              fullWidth
+              value={exportScope}
+              onChange={(v) => setExportScope(v as typeof exportScope)}
+              data={[
+                { label: 'Formativ', value: 'formativ' },
+                { label: 'Summativ', value: 'summativ' },
+              ]}
+            />
+          </div>
+
+          {exportEvaluation.isError && (
+            <Alert color="red" title="Export fejlede">
+              {exportEvaluation.error instanceof Error
+                ? exportEvaluation.error.message
+                : 'Ukendt fejl – prøv igen'}
+            </Alert>
+          )}
+
+          <Text size="sm" c="dimmed">
+            Eleven: <strong>{selectedStudent?.navn}</strong>{' │ '}
+            {currentEvaluation?.modulperiode}
+          </Text>
+
+          <Text size="xs" c="dimmed" fs="italic">
+            Bemærk: PDF-generering kan tage et øjeblik.
+          </Text>
+
+          <Stack gap="xs">
+            <Button
+              leftSection={<IconFileTypePdf size={18} />}
+              color="red"
+              variant="light"
+              loading={exportEvaluation.isPending && exportEvaluation.variables?.format === 'pdf'}
+              disabled={!currentEvaluation?.id || exportEvaluation.isPending}
+              onClick={async () => {
+                if (!currentEvaluation?.id) return
+                try {
+                  await exportEvaluation.mutateAsync({
+                    id: currentEvaluation.id,
+                    format: 'pdf',
+                    scope: exportScope,
+                  })
+                  setExportModalOpen(false)
+                  notifications.show({
+                    title: 'Download startet',
+                    message: 'PDF-filen er klar til download.',
+                    color: 'green',
+                  })
+                } catch {
+                  // error shown in Alert above
+                }
+              }}
+            >
+              Download PDF
+            </Button>
+
+            <Button
+              leftSection={<IconFileWord size={18} />}
+              color="blue"
+              variant="light"
+              loading={exportEvaluation.isPending && exportEvaluation.variables?.format === 'docx'}
+              disabled={!currentEvaluation?.id || exportEvaluation.isPending}
+              onClick={async () => {
+                if (!currentEvaluation?.id) return
+                try {
+                  await exportEvaluation.mutateAsync({
+                    id: currentEvaluation.id,
+                    format: 'docx',
+                    scope: exportScope,
+                  })
+                  setExportModalOpen(false)
+                  notifications.show({
+                    title: 'Download startet',
+                    message: 'Word-filen er klar til download.',
+                    color: 'green',
+                  })
+                } catch {
+                  // error shown in Alert above
+                }
+              }}
+            >
+              Download DOCX
+            </Button>
+
+            <Button
+              leftSection={<IconFileText size={18} />}
+              color="gray"
+              variant="light"
+              loading={exportEvaluation.isPending && exportEvaluation.variables?.format === 'txt'}
+              disabled={!currentEvaluation?.id || exportEvaluation.isPending}
+              onClick={async () => {
+                if (!currentEvaluation?.id) return
+                try {
+                  await exportEvaluation.mutateAsync({
+                    id: currentEvaluation.id,
+                    format: 'txt',
+                    scope: exportScope,
+                  })
+                  setExportModalOpen(false)
+                  notifications.show({
+                    title: 'Download startet',
+                    message: 'Tekstfilen er klar til download.',
+                    color: 'green',
+                  })
+                } catch {
+                  // error shown in Alert above
+                }
+              }}
+            >
+              Download TXT
+            </Button>
+          </Stack>
+
+          <Button
+            variant="subtle"
+            color="gray"
+            onClick={() => setExportModalOpen(false)}
+            disabled={exportEvaluation.isPending}
+          >
+            Annuller
           </Button>
         </Stack>
       </Modal>

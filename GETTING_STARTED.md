@@ -27,7 +27,29 @@ Før du starter skal du have følgende installeret:
 
 Databasen kører nu på `localhost:3306`.
 
-### 2. Start Backend API (Laravel)
+### 2. Konfigurer Environment Variables (Valgfrit)
+
+Frontend bruger en `.env` fil til at specificere backend API URL. Standardværdien er `http://localhost:8000`.
+
+Hvis Laravel kører på en anden port, skal du:
+
+```powershell
+# Åbn .env filen og ændre VITE_API_BASE_URL
+cd "C:\Users\KESO\Desktop\KESO\_Personlige ting og projekter\FrontEndTest"
+notepad .env
+```
+
+Eksempel `.env` indhold:
+```
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+**Hvis Laravel kører på en anden port:**
+```
+VITE_API_BASE_URL=http://localhost:8001
+```
+
+### 3. Start Backend API (Laravel)
 
 Åbn en terminal og kør:
 
@@ -38,7 +60,10 @@ php artisan serve
 
 ✅ Backend API kører nu på **http://localhost:8000**
 
-### 3. Start Frontend (React + Vite)
+> **💡 Tip:** Hvis port 8000 er optaget, bruger Laravel automatisk en anden port (8001, 8002, osv.). 
+> Husk at opdatere `VITE_API_BASE_URL` i `.env` hvis det sker!
+
+### 4. Start Frontend (React + Vite)
 
 Åbn en NY terminal og kør:
 
@@ -47,9 +72,12 @@ cd "C:\Users\KESO\Desktop\KESO\_Personlige ting og projekter\FrontEndTest"
 npm run dev
 ```
 
-✅ Frontend kører nu på **http://localhost:5174**
+✅ Frontend kører nu på **http://localhost:5173** (eller 5174 hvis 5173 er optaget)
 
-### 4. Log ind
+> **💡 Tip:** Vite vælger automatisk en ledig port hvis 5173 er optaget.
+> Frontend vil automatisk kommunikere med backend via Vite proxy, uanset hvilken port Vite bruger.
+
+### 5. Log ind
 
 Åbn browseren på `http://localhost:5174` og log ind med:
 

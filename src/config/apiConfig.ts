@@ -3,14 +3,25 @@
  * 
  * ✅ AKTIV: Egen Laravel MySQL Backend (Februar 2026)
  * 
- * Nuværende setup: Laravel API på http://localhost:8000/api
+ * Nuværende setup: Laravel API - port konfigureres via .env fil
  * Database: MySQL via XAMPP
  * 
  * Mode indstillinger:
  * - 'mock' = JSON Server (kun local dev)
  * - 'static' = In-memory mock data (fungerer på Vercel)
  * - 'real' = Laravel backend (AKTIVERET)
+ * 
+ * Port konfiguration:
+ * - Sæt VITE_API_BASE_URL i .env fil (f.eks. http://localhost:8000)
+ * - Default: http://localhost:8000
  */
+
+// Hent backend base URL fra environment variable eller brug default
+const getEnvApiBaseUrl = (): string => {
+  // Vite exposed env vars starter med VITE_
+  const envUrl = import.meta.env.VITE_API_BASE_URL
+  return envUrl || 'http://localhost:8000'
+}
 
 export const API_CONFIG = {
   // Bruger nu Laravel backend
@@ -29,7 +40,7 @@ export const API_CONFIG = {
   
   // ✅ AKTIVERET - Laravel MySQL Backend
   realApi: {
-    baseUrl: 'http://localhost:8000/api',
+    baseUrl: `${getEnvApiBaseUrl()}/api`,
     
     // Laravel Sanctum credentials
     auth: {

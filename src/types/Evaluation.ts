@@ -14,13 +14,15 @@ export interface SummativeEvaluation {
 }
 
 export interface Evaluation {
-  id: number
+  id?: number
   studentId: number
   holdId: number
   type: 'Formativ' | 'Summativ'
   dato: string
   modulperiode: string
   oprettetAf: string
+  createdAt?: string
+  updatedAt?: string
   fagligtMål: EvaluationGoal
   personligtMål: EvaluationGoal
   socialtMål: EvaluationGoal

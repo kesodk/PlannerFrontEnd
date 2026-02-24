@@ -9,6 +9,25 @@ const AUTH_CREDENTIALS = API_CONFIG.realApi.auth
 // Token storage
 const TOKEN_KEY = 'auth_token'
 
+// ── Utility: extract filename from Content-Disposition ──────────────────────
+function extractFilename(response: Response, fallback: string): string {
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const match = disposition.match(/filename[^;=\n]*=["']?([^"';\n]+)["']?/i)
+  return match?.[1]?.trim() ?? fallback
+}
+
+// ── Utility: trigger browser file download from blob ───────────────────────
+export function triggerBlobDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 100)
+}
+
 export interface LoginRequest {
   email: string
   password: string
@@ -156,6 +175,8 @@ class ApiService {
         throw new Error(`API request failed (${retryResponse.status}): ${errorText || retryResponse.statusText}`)
       }
 
+      // 204 No Content (e.g. DELETE) har ingen body
+      if (retryResponse.status === 204) return null as T
       return retryResponse.json()
     }
 
@@ -164,6 +185,8 @@ class ApiService {
       throw new Error(`API request failed (${response.status}): ${errorText || response.statusText}`)
     }
 
+    // 204 No Content (e.g. DELETE) har ingen body
+    if (response.status === 204) return null as T
     return response.json()
   }
 
@@ -208,6 +231,214 @@ class ApiService {
     return this.authenticatedFetch<void>(`/students/${studentId}`, {
       method: 'DELETE',
     })
+  }
+
+  /**
+   * === EVALUATIONS ===
+   */
+
+  /**
+   * Transform camelCase keys to snake_case for backend
+   */
+  private toSnakeCase(obj: any): any {
+    if (obj === null || obj === undefined || typeof obj !== 'object') {
+      return obj
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.toSnakeCase(item))
+    }
+
+    const snakeCaseObj: any = {}
+    const goalTypes = ['fagligtMål', 'personligtMål', 'socialtMål', 'arbejdsmæssigtMål']
+    
+    for (const [key, value] of Object.entries(obj)) {
+      // Special mapping: holdId -> class_id
+      if (key === 'holdId') {
+        snakeCaseObj['class_id'] = value
+        continue
+      }
+
+      // Special mapping: næste modul prioriteter (number suffix needs underscore)
+      if (key === 'næsteModulPrioritet1') { snakeCaseObj['næste_modul_prioritet_1'] = value; continue }
+      if (key === 'næsteModulPrioritet2') { snakeCaseObj['næste_modul_prioritet_2'] = value; continue }
+      if (key === 'næsteModulPrioritet3') { snakeCaseObj['næste_modul_prioritet_3'] = value; continue }
+
+      // Special mapping: evalueringSenesteMål -> evaluering_seneste_mål
+      if (key === 'evalueringSenesteMål') { snakeCaseObj['evaluering_seneste_mål'] = value; continue }
+      
+      // Flatten nested goal objects: fagligtMål.individueleMål -> fagligt_individuelle_mål
+      if (goalTypes.includes(key) && typeof value === 'object' && value !== null) {
+        // fagligtMål -> fagligt, personligtMål -> personligt
+        const prefix = key.replace(/Mål$/, '').toLowerCase()
+
+        // Explicit sub-key mapping to match exact DB column names
+        const subKeyMap: Record<string, string> = {
+          'individueleMål': 'individuelle_mål',
+          'læringsmål': 'læringsmål',
+          'indholdOgHandlinger': 'indhold_og_handlinger',
+          'opfyldelseskriterier': 'opfyldelseskriterier',
+        }
+
+        for (const [subKey, subValue] of Object.entries(value)) {
+          const snakeSubKey = subKeyMap[subKey] ?? subKey
+            .replace(/([a-z])([A-Z])/g, '$1_$2')
+            .toLowerCase()
+          snakeCaseObj[`${prefix}_${snakeSubKey}`] = subValue
+        }
+        continue
+      }
+      
+      // Flatten elevensEvaluering: elevensEvaluering.fagligt -> elev_fagligt
+      if (key === 'elevensEvaluering' && typeof value === 'object' && value !== null) {
+        for (const [subKey, subValue] of Object.entries(value)) {
+          if (subKey === 'øvrigEvaluering') {
+            snakeCaseObj['elev_øvrig'] = subValue
+          } else {
+            const snakeSubKey = subKey
+              .replace(/([a-z])([A-Z])/g, '$1_$2')
+              .toLowerCase()
+            snakeCaseObj[`elev_${snakeSubKey}`] = subValue
+          }
+        }
+        continue
+      }
+      
+      // Flatten lærerensEvaluering: lærerensEvaluering.fagligt -> lærer_fagligt
+      if (key === 'lærerensEvaluering' && typeof value === 'object' && value !== null) {
+        for (const [subKey, subValue] of Object.entries(value)) {
+          if (subKey === 'øvrigEvaluering') {
+            snakeCaseObj['lærer_øvrig'] = subValue
+          } else {
+            const snakeSubKey = subKey
+              .replace(/([a-z])([A-Z])/g, '$1_$2')
+              .toLowerCase()
+            snakeCaseObj[`lærer_${snakeSubKey}`] = subValue
+          }
+        }
+        continue
+      }
+      
+      // Convert camelCase to snake_case for remaining fields
+      const snakeKey = key
+        .replace(/([a-z])([A-Z])/g, '$1_$2')  // Add _ before capital letters
+        .replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')  // Handle consecutive capitals
+        .toLowerCase()
+      
+      // Don't recursively transform nested objects for special types above
+      snakeCaseObj[snakeKey] = typeof value === 'object' && value !== null
+        ? this.toSnakeCase(value)
+        : value
+    }
+    return snakeCaseObj
+  }
+
+  /**
+   * Hent alle evalueringer
+   */
+  async getEvaluations(endpoint: string = '/evaluations'): Promise<any[]> {
+    return this.authenticatedFetch<any[]>(endpoint, {
+      method: 'GET',
+    })
+  }
+
+  /**
+   * Hent enkelt evaluering
+   */
+  async getEvaluation(id: number): Promise<any> {
+    return this.authenticatedFetch<any>(`/evaluations/${id}`, {
+      method: 'GET',
+    })
+  }
+
+  /**
+   * Opret ny evaluering
+   */
+  async createEvaluation(evaluation: any): Promise<any> {
+    // Transform camelCase to snake_case for backend
+    const snakeCaseData = this.toSnakeCase(evaluation)
+    
+    return this.authenticatedFetch<any>('/evaluations', {
+      method: 'POST',
+      body: JSON.stringify(snakeCaseData),
+    })
+  }
+
+  /**
+   * Opdater evaluering
+   */
+  async updateEvaluation(id: number, evaluation: any): Promise<any> {
+    // Transform camelCase to snake_case for backend
+    const snakeCaseData = this.toSnakeCase(evaluation)
+    
+    return this.authenticatedFetch<any>(`/evaluations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(snakeCaseData),
+    })
+  }
+
+  /**
+   * Slet evaluering
+   */
+  async deleteEvaluation(id: number): Promise<void> {
+    return this.authenticatedFetch<void>(`/evaluations/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  /**
+   * Eksportér evaluering som PDF eller DOCX.
+   * Returnerer blob + filnavn fra Content-Disposition headeren.
+   */
+  async exportEvaluation(
+    id: number,
+    format: 'pdf' | 'docx',
+    scope: 'formativ' | 'summativ' | 'both' = 'formativ'
+  ): Promise<{ blob: Blob; filename: string }> {
+    const token = await this.ensureAuthenticated()
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+
+    const response = await fetch(`${API_BASE_URL}/evaluations/${id}/export`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ format, scope }),
+    })
+
+    if (response.status === 401 && !isMockMode()) {
+      // Token udløbet – prøv igen
+      this.token = null
+      localStorage.removeItem(TOKEN_KEY)
+      const newToken = await this.login()
+      const retryResponse = await fetch(`${API_BASE_URL}/evaluations/${id}/export`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${newToken}`,
+        },
+        body: JSON.stringify({ format, scope }),
+      })
+      if (!retryResponse.ok) {
+        const text = await retryResponse.text()
+        throw new Error(`Export fejlede (${retryResponse.status}): ${text}`)
+      }
+      const blob = await retryResponse.blob()
+      const filename = extractFilename(retryResponse, `Evaluering.${format}`)
+      return { blob, filename }
+    }
+
+    if (!response.ok) {
+      const text = await response.text()
+      throw new Error(`Export fejlede (${response.status}): ${text}`)
+    }
+
+    const blob = await response.blob()
+    const filename = extractFilename(response, `Evaluering.${format}`)
+    return { blob, filename }
   }
 
   /**
