@@ -1,0 +1,48 @@
+import type { Teacher } from '../types/Teacher'
+
+export const mockTeachers: Teacher[] = [
+  {
+    id: 1,
+    name: 'Brian Kristensen',
+    initials: 'BKR',
+    email: 'bkr@aspit.dk',
+    phone: '40 12 34 56',
+    department: 'Trekanten',
+    role: 'admin',
+    active: true,
+    classIds: [1, 2],
+  },
+  {
+    id: 2,
+    name: 'Mette Larsen',
+    initials: 'MEL',
+    email: 'mel@aspit.dk',
+    phone: '51 23 45 67',
+    department: 'Østjylland',
+    role: 'teacher',
+    active: true,
+    classIds: [3],
+  },
+  {
+    id: 3,
+    name: 'Søren Hansen',
+    initials: 'SHN',
+    email: 'shn@aspit.dk',
+    phone: '29 87 65 43',
+    department: 'Trekanten',
+    role: 'teacher',
+    active: true,
+    classIds: [],
+  },
+  {
+    id: 4,
+    name: 'Lene Pedersen',
+    initials: 'LPD',
+    email: 'lpd@aspit.dk',
+    phone: '60 11 22 33',
+    department: 'Sønderjylland',
+    role: 'teacher',
+    active: false,
+    classIds: [],
+  },
+]

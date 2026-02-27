@@ -1,15 +1,19 @@
 import { Routes, Route } from 'react-router-dom'
-import { AppShell, Group, Text, ActionIcon } from '@mantine/core'
-import { IconChevronRight, IconChevronLeft } from '@tabler/icons-react'
+import { AppShell, Group, Text, ActionIcon, Button } from '@mantine/core'
+import { IconChevronRight, IconChevronLeft, IconLogout } from '@tabler/icons-react'
 import { useDisclosure } from '@mantine/hooks'
 import { Navigation } from './components/Navigation'
-import { Dashboard, Planning, Evaluation, Attendance, Students, Classes, Assessments, AssessmentDetail } from './pages'
+import { Dashboard, Planning, Evaluation, Attendance, Students, Classes, Assessments, AssessmentDetail, Teachers, LoginPage } from './pages'
 import { ThemeToggle } from './components/ThemeToggle'
 import { SidebarProvider } from './contexts/SidebarContext'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 
-function App() {
+function AppInner() {
+  const { user, logout } = useAuth()
   const [mobileOpened, { toggle: toggleMobile }] = useDisclosure()
   const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true)
+
+  if (!user) return <LoginPage />
 
   return (
     <AppShell
@@ -48,7 +52,22 @@ function App() {
               AspIT Planner (test)
             </Text>
           </Group>
-          <ThemeToggle />
+          <Group gap="sm">
+            <Text size="sm" c="dimmed">
+              Logget ind som <strong>{user.initialer}</strong>
+              {user.isGuest && ' (Gæst)'}
+            </Text>
+            <Button
+              variant="subtle"
+              color="gray"
+              size="xs"
+              leftSection={<IconLogout size={14} />}
+              onClick={logout}
+            >
+              Log ud
+            </Button>
+            <ThemeToggle />
+          </Group>
         </Group>
       </AppShell.Header>
 
@@ -68,10 +87,19 @@ function App() {
             <Route path="/administration/assessments" element={<Assessments />} />
             <Route path="/administration/assessments/:studentId" element={<AssessmentDetail />} />
             <Route path="/administration/overviews" element={<div>Oversigter - kommer snart</div>} />
+            <Route path="/administration/teachers" element={<Teachers />} />
           </Routes>
         </SidebarProvider>
       </AppShell.Main>
     </AppShell>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
   )
 }
 

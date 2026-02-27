@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { notifications } from '@mantine/notifications'
 import {
   Grid,
   Card,
@@ -16,7 +17,7 @@ import {
   Loader,
   Alert
 } from '@mantine/core'
-import { IconSearch, IconPlus, IconArrowRight, IconArrowLeft, IconEdit, IconTrash, IconAlertCircle } from '@tabler/icons-react'
+import { IconSearch, IconPlus, IconArrowRight, IconArrowLeft, IconEdit, IconTrash, IconAlertCircle, IconRefresh } from '@tabler/icons-react'
 import { useStudents } from '../services/studentApi'
 import { 
   useClasses, 
@@ -27,44 +28,32 @@ import {
   useUnenrollStudent,
   type ClassData 
 } from '../services/classApi'
-import { availableTeachers, availableFag, availableModulperioder } from '../data/mockClasses'
+import { availableFag, availableModulperioder } from '../data/mockClasses'
+import { useTeachers } from '../services/teacherApi'
 import { formatDate } from '../utils/dateUtils'
 import { canCreateClassForModulperiode, getModulperiodeDisplayName, parseModulperiode } from '../utils/modulperiodeUtils'
 
-// Funktion til at beregne datoer fra modulperiode
+// Beregn datoer fra modulperiode ved hjælp af den korrekte AspIT kalender-logik
 function getModulperiodeDates(modulperiode: string): { startdato: string; slutdato: string } {
-  const [yearStr, halfStr, moduleStr] = modulperiode.split('-')
-  const year = 2000 + parseInt(yearStr)
-  const half = parseInt(halfStr)
-  const moduleNum = parseInt(moduleStr.replace('M', ''))
-  
-  let startMonth, endMonth
-  
-  if (half === 1) { // Vinter/Forår (Januar-Juni)
-    if (moduleNum === 1) {
-      startMonth = 0; endMonth = 1 // Jan-Feb
-    } else if (moduleNum === 2) {
-      startMonth = 2; endMonth = 4 // Mar-Maj
-    } else { // M3
-      startMonth = 5; endMonth = 5 // Juni
-    }
-  } else { // Efterår (August-December)
-    if (moduleNum === 1) {
-      startMonth = 7; endMonth = 8 // Aug-Sep
-    } else if (moduleNum === 2) {
-      startMonth = 9; endMonth = 10 // Okt-Nov
-    } else { // M3
-      startMonth = 11; endMonth = 11 // Dec
-    }
-  }
-  
-  const startDate = new Date(year, startMonth, 1)
-  const endDate = new Date(year, endMonth + 1, 0) // Last day of month
-  
+  const info = parseModulperiode(modulperiode)
   return {
-    startdato: startDate.toISOString().split('T')[0],
-    slutdato: endDate.toISOString().split('T')[0]
+    startdato: info.startDate.toISOString().split('T')[0],
+    slutdato: info.endDate.toISOString().split('T')[0],
   }
+}
+
+// Dato-safe sammenligning der ignorerer klokkeslæt (undgår timezone-problemer)
+function toDateOnly(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+}
+
+function classStatus(startdato: string, slutdato: string): 'Fremtidig' | 'Igangværende' | 'Afsluttet' {
+  const today = toDateOnly(new Date())
+  const start = toDateOnly(new Date(startdato))
+  const end = toDateOnly(new Date(slutdato))
+  if (start > today) return 'Fremtidig'
+  if (end < today) return 'Afsluttet'
+  return 'Igangværende'
 }
 
 // Generer holdnavn: modulperiode-fag-lærer
@@ -78,6 +67,8 @@ export function Classes() {
   const [statusFilter, setStatusFilter] = useState<string>('Igangværende')
   const [afdelingFilter, setAfdelingFilter] = useState<string | null>(null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
+
+  const { data: teachers = [] } = useTeachers()
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
@@ -92,7 +83,16 @@ export function Classes() {
 
   // API hooks
   const { data: students = [] } = useStudents()
-  const { data: classes = [], isLoading: classesLoading, error: classesError } = useClasses()
+  const { data: classes = [], isLoading: classesLoading, error: classesError, refetch: refetchClasses } = useClasses()
+
+  const handleRefreshData = () => {
+    refetchClasses()
+    notifications.show({
+      title: 'Data opdateret',
+      message: 'Hold data er blevet genindlæst fra API',
+      color: 'blue'
+    })
+  }
   const createClassMutation = useCreateClass()
   const updateClassMutation = useUpdateClass()
   const deleteClassMutation = useDeleteClass()
@@ -131,7 +131,7 @@ export function Classes() {
       })
     : []
 
-  const afdelinger = Array.from(new Set(students.map(s => s.afdeling))).map(a => ({
+  const afdelinger = ['Trekanten', 'Østjylland', 'Sønderjylland', 'Storkøbenhavn'].map(a => ({
     value: a,
     label: a
   }))
@@ -193,8 +193,7 @@ export function Classes() {
       ...classForm,
       startdato,
       slutdato,
-      status: new Date(startdato) > new Date() ? 'Fremtidig' : 
-              new Date(slutdato) < new Date() ? 'Afsluttet' : 'Igangværende'
+      status: classStatus(startdato, slutdato)
     }
     
     try {
@@ -225,8 +224,7 @@ export function Classes() {
       ...classForm,
       startdato,
       slutdato,
-      status: new Date(startdato) > new Date() ? 'Fremtidig' :
-              new Date(slutdato) < new Date() ? 'Afsluttet' : 'Igangværende'
+      status: classStatus(startdato, slutdato)
     }
     
     try {
@@ -275,13 +273,23 @@ export function Classes() {
           <Card shadow="sm" padding="lg" radius="md" withBorder style={{ height: 'calc(100vh - 120px)', overflow: 'auto' }}>
             <Group justify="space-between" mb="md">
               <Title order={3}>Hold</Title>
-              <Button
-                leftSection={<IconPlus size={16} />}
-                size="sm"
-                onClick={() => setCreateModalOpen(true)}
-              >
-                Opret hold
-              </Button>
+              <Group gap="xs">
+                <Button
+                  variant="light"
+                  leftSection={<IconRefresh size={16} />}
+                  size="sm"
+                  onClick={handleRefreshData}
+                >
+                  Opdater
+                </Button>
+                <Button
+                  leftSection={<IconPlus size={16} />}
+                  size="sm"
+                  onClick={() => setCreateModalOpen(true)}
+                >
+                  Opret hold
+                </Button>
+              </Group>
             </Group>
 
             <Stack gap="sm" mb="md">
@@ -513,7 +521,11 @@ export function Classes() {
           <Select
             label="Lærer"
             placeholder="Vælg lærer"
-            data={availableTeachers.map(t => ({ value: t.initials, label: `${t.name} (${t.initials})` }))}
+            data={teachers
+              .filter(t => t.aktiv)
+              .filter(t => !classForm.afdeling || t.afdelinger.includes(classForm.afdeling as any))
+              .map(t => ({ value: t.initialer, label: `${t.navn} (${t.initialer})` }))
+            }
             value={classForm.lærer}
             onChange={(value) => setClassForm({ ...classForm, lærer: value || '' })}
             searchable
@@ -585,7 +597,11 @@ export function Classes() {
           <Select
             label="Lærer"
             placeholder="Vælg lærer"
-            data={availableTeachers.map(t => ({ value: t.initials, label: `${t.name} (${t.initials})` }))}
+            data={teachers
+              .filter(t => t.aktiv)
+              .filter(t => !classForm.afdeling || t.afdelinger.includes(classForm.afdeling as any))
+              .map(t => ({ value: t.initialer, label: `${t.navn} (${t.initialer})` }))
+            }
             value={classForm.lærer}
             onChange={(value) => setClassForm({ ...classForm, lærer: value || '' })}
             searchable
