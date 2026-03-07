@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+﻿import { useState, useRef, useEffect } from 'react'
 import {
   Grid,
   Card,
@@ -22,13 +22,36 @@ import {
   SegmentedControl,
   Alert
 } from '@mantine/core'
-import { IconBold, IconItalic, IconUnderline, IconStrikethrough, IconList, IconListNumbers, IconClearFormatting, IconCheck, IconX, IconTrash, IconPlus, IconFileTypePdf, IconFileWord, IconFileText } from '@tabler/icons-react'
+import { IconBold, IconItalic, IconUnderline, IconStrikethrough, IconList, IconListNumbers, IconClearFormatting, IconLink, IconCheck, IconX, IconTrash, IconPlus, IconFileTypePdf, IconFileWord, IconFileText } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
 import { useStudents } from '../services/studentApi'
 import { useClasses } from '../services/classApi'
 import { useEvaluations, useCreateEvaluation, useUpdateEvaluation, useDeleteEvaluation, useExportEvaluation } from '../services/evaluationApi'
 import { availableFag } from '../data/mockClasses'
 import type { Evaluation, EvaluationGoal } from '../types/Evaluation'
+
+// Column and section styles for evaluation tables
+const EVAL_STYLES = {
+  sectionHeader: {
+    fontWeight: 600,
+    fontSize: 15,
+    color: 'light-dark(var(--mantine-color-blue-9), var(--mantine-color-dark-1))',
+    padding: '10px 10px',
+    backgroundColor: 'light-dark(var(--mantine-color-blue-1), var(--mantine-color-dark-9))',
+    borderRadius: '4px 4px 0 0',
+    border: '1px solid var(--mantine-color-default-border)',
+    borderBottom: 'none',
+  },
+  thRow: { borderBottom: '1px solid var(--mantine-color-default-border)' },
+  th1: { backgroundColor: 'transparent', color: 'var(--mantine-color-dimmed)', borderRight: '1px solid var(--mantine-color-default-border)', fontWeight: 600 as const },
+  th2: { backgroundColor: 'light-dark(rgba(0,0,0,0.015), rgba(255,255,255,0.03))', color: 'var(--mantine-color-dimmed)', borderRight: '1px solid var(--mantine-color-default-border)', fontWeight: 600 as const },
+  th3: { backgroundColor: 'transparent', color: 'var(--mantine-color-dimmed)', borderRight: '1px solid var(--mantine-color-default-border)', fontWeight: 600 as const },
+  th4: { backgroundColor: 'light-dark(rgba(0,0,0,0.015), rgba(255,255,255,0.03))', color: 'var(--mantine-color-dimmed)', fontWeight: 600 as const },
+  td1: { backgroundColor: 'transparent', borderRight: '1px solid var(--mantine-color-default-border)', width: '25%', maxWidth: '25%', verticalAlign: 'top' as const },
+  td2: { backgroundColor: 'light-dark(rgba(0,0,0,0.015), rgba(255,255,255,0.03))', borderRight: '1px solid var(--mantine-color-default-border)', width: '25%', maxWidth: '25%', verticalAlign: 'top' as const },
+  td3: { backgroundColor: 'transparent', borderRight: '1px solid var(--mantine-color-default-border)', width: '25%', maxWidth: '25%', verticalAlign: 'top' as const },
+  td4: { backgroundColor: 'light-dark(rgba(0,0,0,0.015), rgba(255,255,255,0.03))', width: '25%', maxWidth: '25%', verticalAlign: 'top' as const },
+}
 
 // Global Toolbar Component
 function GlobalToolbar({ onExport, onStu, onSave, isSaving }: {
@@ -41,8 +64,16 @@ function GlobalToolbar({ onExport, onStu, onSave, isSaving }: {
     document.execCommand(command, false, value)
   }
 
+  const handleLink = () => {
+    const url = window.prompt('Indsæt URL:')
+    if (url) {
+      const normalizedUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`
+      document.execCommand('createLink', false, normalizedUrl)
+    }
+  }
+
   return (
-    <Paper shadow="sm" p="sm" mb="md" withBorder style={{ position: 'sticky', top: 0, zIndex: 100, backgroundColor: 'var(--mantine-color-body)' }}>
+    <Paper shadow="sm" p="sm" mb="md" withBorder style={{ position: 'sticky', top: 'calc(-1 * var(--mantine-spacing-lg))', zIndex: 100, backgroundColor: 'var(--mantine-color-body)' }}>
       <Group justify="space-between" wrap="nowrap">
         <Group gap="sm">
           <Text size="sm" fw={500} mr="xs">Formatering:</Text>
@@ -79,6 +110,11 @@ function GlobalToolbar({ onExport, onStu, onSave, isSaving }: {
           <Tooltip label="Ryd formatering">
             <ActionIcon variant="default" size="lg" onClick={() => execCommand('removeFormat')}>
               <IconClearFormatting size={20} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="Indsæt link">
+            <ActionIcon variant="default" size="lg" onClick={handleLink}>
+              <IconLink size={20} />
             </ActionIcon>
           </Tooltip>
         </Group>
@@ -122,6 +158,16 @@ function EditableField({ value, onChange }: { value: string; onChange: (value: s
     document.execCommand('insertText', false, text)
   }
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (e.ctrlKey) {
+      const target = (e.target as HTMLElement).closest('a')
+      if (target?.href) {
+        e.preventDefault()
+        window.open(target.href, '_blank', 'noopener,noreferrer')
+      }
+    }
+  }
+
   return (
     <div
       ref={divRef}
@@ -129,6 +175,7 @@ function EditableField({ value, onChange }: { value: string; onChange: (value: s
       suppressContentEditableWarning
       onInput={handleInput}
       onPaste={handlePaste}
+      onClick={handleClick}
       style={{
         minHeight: '70px',
         width: '100%',
@@ -467,16 +514,16 @@ export function Evaluation() {
                 <Stack gap="lg" mt="md">
                   {['Fagligt mål', 'Personligt mål', 'Socialt mål', 'Arbejdsmæssigt mål'].map(title => (
                     <div key={title}>
-                      <Title order={5} mb="xs" style={{ backgroundColor: '#194541', color: 'white', padding: '8px 12px', borderRadius: '4px' }}>
+                      <Title order={5} mb={0} style={EVAL_STYLES.sectionHeader}>
                         {title}
                       </Title>
                       <Table withTableBorder style={{ tableLayout: 'fixed' }}>
                         <Table.Thead>
-                          <Table.Tr style={{ backgroundColor: '#29675a' }}>
-                            <Table.Th style={{ color: 'white' }}>Individuelle mål</Table.Th>
-                            <Table.Th style={{ color: 'white' }}>Læringsmål</Table.Th>
-                            <Table.Th style={{ color: 'white' }}>Indhold og handlinger</Table.Th>
-                            <Table.Th style={{ color: 'white' }}>Opfyldelseskriterier</Table.Th>
+                          <Table.Tr style={EVAL_STYLES.thRow}>
+                            <Table.Th style={EVAL_STYLES.th1}>Individuelle mål</Table.Th>
+                            <Table.Th style={EVAL_STYLES.th2}>Læringsmål</Table.Th>
+                            <Table.Th style={EVAL_STYLES.th3}>Indhold og handlinger</Table.Th>
+                            <Table.Th style={EVAL_STYLES.th4}>Opfyldelseskriterier</Table.Th>
                           </Table.Tr>
                         </Table.Thead>
                         <Table.Tbody>
@@ -592,7 +639,7 @@ export function Evaluation() {
                       border: '1px solid var(--mantine-color-gray-4)',
                       borderBottom: 'none',
                       backgroundColor: evaluationType === 'Formativ' ? 'var(--mantine-color-body)' : 'light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6))',
-                      borderTop: evaluationType === 'Formativ' ? '3px solid #29675a' : '1px solid var(--mantine-color-gray-4)',
+                      borderTop: evaluationType === 'Formativ' ? '3px solid var(--mantine-color-blue-filled)' : '1px solid var(--mantine-color-gray-4)',
                       fontWeight: evaluationType === 'Formativ' ? 600 : 400,
                       color: evaluationType === 'Formativ' ? 'var(--mantine-color-text)' : 'light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2))'
                     }}
@@ -605,7 +652,7 @@ export function Evaluation() {
                       border: '1px solid var(--mantine-color-gray-4)',
                       borderBottom: 'none',
                       backgroundColor: evaluationType === 'Summativ' ? 'var(--mantine-color-body)' : 'light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6))',
-                      borderTop: evaluationType === 'Summativ' ? '3px solid #29675a' : '1px solid var(--mantine-color-gray-4)',
+                      borderTop: evaluationType === 'Summativ' ? '3px solid var(--mantine-color-blue-filled)' : '1px solid var(--mantine-color-gray-4)',
                       fontWeight: evaluationType === 'Summativ' ? 600 : 400,
                       color: evaluationType === 'Summativ' ? 'var(--mantine-color-text)' : 'light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2))'
                     }}
@@ -619,39 +666,39 @@ export function Evaluation() {
               <Stack gap="lg">
                 {/* Fagligt mål */}
                 <div>
-                  <Title order={5} mb="xs" style={{ backgroundColor: '#194541', color: 'white', padding: '8px 12px', borderRadius: '4px' }}>
+                  <Title order={5} mb={0} style={EVAL_STYLES.sectionHeader}>
                     Fagligt mål
                   </Title>
-                  <Table withTableBorder style={{ tableLayout: 'fixed', borderWidth: '2px' }}>
+                  <Table withTableBorder style={{ tableLayout: 'fixed' }}>
                     <Table.Thead>
-                      <Table.Tr style={{ backgroundColor: '#29675a', borderBottom: '2px solid var(--mantine-color-gray-4)' }}>
-                        <Table.Th style={{ color: 'white', borderRight: '2px solid var(--mantine-color-gray-4)' }}>Individuelle mål</Table.Th>
-                        <Table.Th style={{ color: 'white', borderRight: '2px solid var(--mantine-color-gray-4)' }}>Læringsmål</Table.Th>
-                        <Table.Th style={{ color: 'white', borderRight: '2px solid var(--mantine-color-gray-4)' }}>Indhold og handlinger</Table.Th>
-                        <Table.Th style={{ color: 'white' }}>Opfyldelseskriterier</Table.Th>
+                      <Table.Tr style={EVAL_STYLES.thRow}>
+                        <Table.Th style={EVAL_STYLES.th1}>Individuelle mål</Table.Th>
+                        <Table.Th style={EVAL_STYLES.th2}>Læringsmål</Table.Th>
+                        <Table.Th style={EVAL_STYLES.th3}>Indhold og handlinger</Table.Th>
+                        <Table.Th style={EVAL_STYLES.th4}>Opfyldelseskriterier</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
                       <Table.Tr>
-                        <Table.Td style={{ borderRight: '2px solid var(--mantine-color-gray-4)', width: '25%', maxWidth: '25%', verticalAlign: 'top' }}>
+                        <Table.Td style={EVAL_STYLES.td1}>
                           <EditableField
                             value={currentEvaluation.fagligtMål.individueleMål}
                             onChange={(value) => updateGoalField('fagligtMål', 'individueleMål', value)}
                           />
                         </Table.Td>
-                        <Table.Td style={{ borderRight: '2px solid var(--mantine-color-gray-4)', width: '25%', maxWidth: '25%', verticalAlign: 'top' }}>
+                        <Table.Td style={EVAL_STYLES.td2}>
                           <EditableField
                             value={currentEvaluation.fagligtMål.læringsmål}
                             onChange={(value) => updateGoalField('fagligtMål', 'læringsmål', value)}
                           />
                         </Table.Td>
-                        <Table.Td style={{ borderRight: '2px solid var(--mantine-color-gray-4)', width: '25%', maxWidth: '25%', verticalAlign: 'top' }}>
+                        <Table.Td style={EVAL_STYLES.td3}>
                           <EditableField
                             value={currentEvaluation.fagligtMål.indholdOgHandlinger}
                             onChange={(value) => updateGoalField('fagligtMål', 'indholdOgHandlinger', value)}
                           />
                         </Table.Td>
-                        <Table.Td style={{ width: '25%', maxWidth: '25%', verticalAlign: 'top' }}>
+                        <Table.Td style={EVAL_STYLES.td4}>
                           <EditableField
                             value={currentEvaluation.fagligtMål.opfyldelseskriterier}
                             onChange={(value) => updateGoalField('fagligtMål', 'opfyldelseskriterier', value)}
@@ -664,39 +711,39 @@ export function Evaluation() {
 
                 {/* Personligt mål */}
                 <div>
-                  <Title order={5} mb="xs" style={{ backgroundColor: '#194541', color: 'white', padding: '8px 12px', borderRadius: '4px' }}>
+                  <Title order={5} mb={0} style={EVAL_STYLES.sectionHeader}>
                     Personligt mål
                   </Title>
-                  <Table withTableBorder style={{ tableLayout: 'fixed', borderWidth: '2px' }}>
+                  <Table withTableBorder style={{ tableLayout: 'fixed' }}>
                     <Table.Thead>
-                      <Table.Tr style={{ backgroundColor: '#29675a', borderBottom: '2px solid var(--mantine-color-gray-4)' }}>
-                        <Table.Th style={{ color: 'white', borderRight: '2px solid var(--mantine-color-gray-4)' }}>Individuelle mål</Table.Th>
-                        <Table.Th style={{ color: 'white', borderRight: '2px solid var(--mantine-color-gray-4)' }}>Læringsmål</Table.Th>
-                        <Table.Th style={{ color: 'white', borderRight: '2px solid var(--mantine-color-gray-4)' }}>Indhold og handlinger</Table.Th>
-                        <Table.Th style={{ color: 'white' }}>Opfyldelseskriterier</Table.Th>
+                      <Table.Tr style={EVAL_STYLES.thRow}>
+                        <Table.Th style={EVAL_STYLES.th1}>Individuelle mål</Table.Th>
+                        <Table.Th style={EVAL_STYLES.th2}>Læringsmål</Table.Th>
+                        <Table.Th style={EVAL_STYLES.th3}>Indhold og handlinger</Table.Th>
+                        <Table.Th style={EVAL_STYLES.th4}>Opfyldelseskriterier</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
                       <Table.Tr>
-                        <Table.Td style={{ borderRight: '2px solid var(--mantine-color-gray-4)', width: '25%', maxWidth: '25%', verticalAlign: 'top' }}>
+                        <Table.Td style={EVAL_STYLES.td1}>
                           <EditableField
                             value={currentEvaluation.personligtMål.individueleMål}
                             onChange={(value) => updateGoalField('personligtMål', 'individueleMål', value)}
                           />
                         </Table.Td>
-                        <Table.Td style={{ borderRight: '2px solid var(--mantine-color-gray-4)', width: '25%', maxWidth: '25%', verticalAlign: 'top' }}>
+                        <Table.Td style={EVAL_STYLES.td2}>
                           <EditableField
                             value={currentEvaluation.personligtMål.læringsmål}
                             onChange={(value) => updateGoalField('personligtMål', 'læringsmål', value)}
                           />
                         </Table.Td>
-                        <Table.Td style={{ borderRight: '2px solid var(--mantine-color-gray-4)', width: '25%', maxWidth: '25%', verticalAlign: 'top' }}>
+                        <Table.Td style={EVAL_STYLES.td3}>
                           <EditableField
                             value={currentEvaluation.personligtMål.indholdOgHandlinger}
                             onChange={(value) => updateGoalField('personligtMål', 'indholdOgHandlinger', value)}
                           />
                         </Table.Td>
-                        <Table.Td style={{ width: '25%', maxWidth: '25%', verticalAlign: 'top' }}>
+                        <Table.Td style={EVAL_STYLES.td4}>
                           <EditableField
                             value={currentEvaluation.personligtMål.opfyldelseskriterier}
                             onChange={(value) => updateGoalField('personligtMål', 'opfyldelseskriterier', value)}
@@ -709,39 +756,39 @@ export function Evaluation() {
 
                 {/* Socialt mål */}
                 <div>
-                  <Title order={5} mb="xs" style={{ backgroundColor: '#194541', color: 'white', padding: '8px 12px', borderRadius: '4px' }}>
+                  <Title order={5} mb={0} style={EVAL_STYLES.sectionHeader}>
                     Socialt mål
                   </Title>
-                  <Table withTableBorder style={{ tableLayout: 'fixed', borderWidth: '2px' }}>
+                  <Table withTableBorder style={{ tableLayout: 'fixed' }}>
                     <Table.Thead>
-                      <Table.Tr style={{ backgroundColor: '#29675a', borderBottom: '2px solid var(--mantine-color-gray-4)' }}>
-                        <Table.Th style={{ color: 'white', borderRight: '2px solid var(--mantine-color-gray-4)' }}>Individuelle mål</Table.Th>
-                        <Table.Th style={{ color: 'white', borderRight: '2px solid var(--mantine-color-gray-4)' }}>Læringsmål</Table.Th>
-                        <Table.Th style={{ color: 'white', borderRight: '2px solid var(--mantine-color-gray-4)' }}>Indhold og handlinger</Table.Th>
-                        <Table.Th style={{ color: 'white' }}>Opfyldelseskriterier</Table.Th>
+                      <Table.Tr style={EVAL_STYLES.thRow}>
+                        <Table.Th style={EVAL_STYLES.th1}>Individuelle mål</Table.Th>
+                        <Table.Th style={EVAL_STYLES.th2}>Læringsmål</Table.Th>
+                        <Table.Th style={EVAL_STYLES.th3}>Indhold og handlinger</Table.Th>
+                        <Table.Th style={EVAL_STYLES.th4}>Opfyldelseskriterier</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
                       <Table.Tr>
-                        <Table.Td style={{ borderRight: '2px solid var(--mantine-color-gray-4)', width: '25%', maxWidth: '25%', verticalAlign: 'top' }}>
+                        <Table.Td style={EVAL_STYLES.td1}>
                           <EditableField
                             value={currentEvaluation.socialtMål.individueleMål}
                             onChange={(value) => updateGoalField('socialtMål', 'individueleMål', value)}
                           />
                         </Table.Td>
-                        <Table.Td style={{ borderRight: '2px solid var(--mantine-color-gray-4)', width: '25%', maxWidth: '25%', verticalAlign: 'top' }}>
+                        <Table.Td style={EVAL_STYLES.td2}>
                           <EditableField
                             value={currentEvaluation.socialtMål.læringsmål}
                             onChange={(value) => updateGoalField('socialtMål', 'læringsmål', value)}
                           />
                         </Table.Td>
-                        <Table.Td style={{ borderRight: '2px solid var(--mantine-color-gray-4)', width: '25%', maxWidth: '25%', verticalAlign: 'top' }}>
+                        <Table.Td style={EVAL_STYLES.td3}>
                           <EditableField
                             value={currentEvaluation.socialtMål.indholdOgHandlinger}
                             onChange={(value) => updateGoalField('socialtMål', 'indholdOgHandlinger', value)}
                           />
                         </Table.Td>
-                        <Table.Td style={{ width: '25%', maxWidth: '25%', verticalAlign: 'top' }}>
+                        <Table.Td style={EVAL_STYLES.td4}>
                           <EditableField
                             value={currentEvaluation.socialtMål.opfyldelseskriterier}
                             onChange={(value) => updateGoalField('socialtMål', 'opfyldelseskriterier', value)}
@@ -754,39 +801,39 @@ export function Evaluation() {
 
                 {/* Arbejdsmæssigt mål */}
                 <div>
-                  <Title order={5} mb="xs" style={{ backgroundColor: '#194541', color: 'white', padding: '8px 12px', borderRadius: '4px' }}>
+                  <Title order={5} mb={0} style={EVAL_STYLES.sectionHeader}>
                     Arbejdsmæssigt mål
                   </Title>
-                  <Table withTableBorder style={{ tableLayout: 'fixed', borderWidth: '2px' }}>
+                  <Table withTableBorder style={{ tableLayout: 'fixed' }}>
                     <Table.Thead>
-                      <Table.Tr style={{ backgroundColor: '#29675a', borderBottom: '2px solid var(--mantine-color-gray-4)' }}>
-                        <Table.Th style={{ color: 'white', borderRight: '2px solid var(--mantine-color-gray-4)' }}>Individuelle mål</Table.Th>
-                        <Table.Th style={{ color: 'white', borderRight: '2px solid var(--mantine-color-gray-4)' }}>Læringsmål</Table.Th>
-                        <Table.Th style={{ color: 'white', borderRight: '2px solid var(--mantine-color-gray-4)' }}>Indhold og handlinger</Table.Th>
-                        <Table.Th style={{ color: 'white' }}>Opfyldelseskriterier</Table.Th>
+                      <Table.Tr style={EVAL_STYLES.thRow}>
+                        <Table.Th style={EVAL_STYLES.th1}>Individuelle mål</Table.Th>
+                        <Table.Th style={EVAL_STYLES.th2}>Læringsmål</Table.Th>
+                        <Table.Th style={EVAL_STYLES.th3}>Indhold og handlinger</Table.Th>
+                        <Table.Th style={EVAL_STYLES.th4}>Opfyldelseskriterier</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
                       <Table.Tr>
-                        <Table.Td style={{ borderRight: '2px solid var(--mantine-color-gray-4)', width: '25%', maxWidth: '25%', verticalAlign: 'top' }}>
+                        <Table.Td style={EVAL_STYLES.td1}>
                           <EditableField
                             value={currentEvaluation.arbejdsmæssigtMål.individueleMål}
                             onChange={(value) => updateGoalField('arbejdsmæssigtMål', 'individueleMål', value)}
                           />
                         </Table.Td>
-                        <Table.Td style={{ borderRight: '2px solid var(--mantine-color-gray-4)', width: '25%', maxWidth: '25%', verticalAlign: 'top' }}>
+                        <Table.Td style={EVAL_STYLES.td2}>
                           <EditableField
                             value={currentEvaluation.arbejdsmæssigtMål.læringsmål}
                             onChange={(value) => updateGoalField('arbejdsmæssigtMål', 'læringsmål', value)}
                           />
                         </Table.Td>
-                        <Table.Td style={{ borderRight: '2px solid var(--mantine-color-gray-4)', width: '25%', maxWidth: '25%', verticalAlign: 'top' }}>
+                        <Table.Td style={EVAL_STYLES.td3}>
                           <EditableField
                             value={currentEvaluation.arbejdsmæssigtMål.indholdOgHandlinger}
                             onChange={(value) => updateGoalField('arbejdsmæssigtMål', 'indholdOgHandlinger', value)}
                           />
                         </Table.Td>
-                        <Table.Td style={{ width: '25%', maxWidth: '25%', verticalAlign: 'top' }}>
+                        <Table.Td style={EVAL_STYLES.td4}>
                           <EditableField
                             value={currentEvaluation.arbejdsmæssigtMål.opfyldelseskriterier}
                             onChange={(value) => updateGoalField('arbejdsmæssigtMål', 'opfyldelseskriterier', value)}
@@ -854,19 +901,19 @@ export function Evaluation() {
               <Stack gap="lg">
                 {/* Elevens evaluering */}
                 <div>
-                  <Title order={4} mb="md" style={{ backgroundColor: '#194541', color: 'white', padding: '12px 16px', borderRadius: '4px' }}>
+                  <Title order={4} mb={0} style={EVAL_STYLES.sectionHeader}>
                     Elevens evaluering
                   </Title>
                   <Table withTableBorder style={{ borderWidth: '2px' }}>
                     <Table.Thead>
-                      <Table.Tr style={{ backgroundColor: '#29675a', borderBottom: '2px solid var(--mantine-color-gray-4)' }}>
-                        <Table.Th style={{ color: 'white', width: '200px', borderRight: '2px solid var(--mantine-color-gray-4)' }}>Område</Table.Th>
-                        <Table.Th style={{ color: 'white' }}>Evaluering</Table.Th>
+                      <Table.Tr style={{ backgroundColor: 'var(--mantine-color-default-hover)', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+                        <Table.Th style={{ color: 'var(--mantine-color-dimmed)', width: '200px', borderRight: '1px solid var(--mantine-color-default-border)' }}>Område</Table.Th>
+                        <Table.Th style={{ color: 'var(--mantine-color-dimmed)' }}>Evaluering</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      <Table.Tr style={{ borderBottom: '2px solid var(--mantine-color-gray-4)' }}>
-                        <Table.Td style={{ fontWeight: 500, borderRight: '2px solid var(--mantine-color-gray-4)' }}>Fagligt</Table.Td>
+                      <Table.Tr style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+                        <Table.Td style={{ fontWeight: 500, borderRight: '1px solid var(--mantine-color-default-border)' }}>Fagligt</Table.Td>
                         <Table.Td style={{ verticalAlign: 'top' }}>
                           <EditableField
                             value={currentEvaluation.elevensEvaluering?.fagligt || ''}
@@ -874,8 +921,8 @@ export function Evaluation() {
                           />
                         </Table.Td>
                       </Table.Tr>
-                      <Table.Tr style={{ borderBottom: '2px solid var(--mantine-color-gray-4)' }}>
-                        <Table.Td style={{ fontWeight: 500, borderRight: '2px solid var(--mantine-color-gray-4)' }}>Personligt</Table.Td>
+                      <Table.Tr style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+                        <Table.Td style={{ fontWeight: 500, borderRight: '1px solid var(--mantine-color-default-border)' }}>Personligt</Table.Td>
                         <Table.Td style={{ verticalAlign: 'top' }}>
                           <EditableField
                             value={currentEvaluation.elevensEvaluering?.personligt || ''}
@@ -883,8 +930,8 @@ export function Evaluation() {
                           />
                         </Table.Td>
                       </Table.Tr>
-                      <Table.Tr style={{ borderBottom: '2px solid var(--mantine-color-gray-4)' }}>
-                        <Table.Td style={{ fontWeight: 500, borderRight: '2px solid var(--mantine-color-gray-4)' }}>Socialt</Table.Td>
+                      <Table.Tr style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+                        <Table.Td style={{ fontWeight: 500, borderRight: '1px solid var(--mantine-color-default-border)' }}>Socialt</Table.Td>
                         <Table.Td style={{ verticalAlign: 'top' }}>
                           <EditableField
                             value={currentEvaluation.elevensEvaluering?.socialt || ''}
@@ -892,8 +939,8 @@ export function Evaluation() {
                           />
                         </Table.Td>
                       </Table.Tr>
-                      <Table.Tr style={{ borderBottom: '2px solid var(--mantine-color-gray-4)' }}>
-                        <Table.Td style={{ fontWeight: 500, borderRight: '2px solid var(--mantine-color-gray-4)' }}>Arbejdsmæssigt</Table.Td>
+                      <Table.Tr style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+                        <Table.Td style={{ fontWeight: 500, borderRight: '1px solid var(--mantine-color-default-border)' }}>Arbejdsmæssigt</Table.Td>
                         <Table.Td style={{ verticalAlign: 'top' }}>
                           <EditableField
                             value={currentEvaluation.elevensEvaluering?.arbejdsmæssigt || ''}
@@ -902,7 +949,7 @@ export function Evaluation() {
                         </Table.Td>
                       </Table.Tr>
                       <Table.Tr>
-                        <Table.Td style={{ fontWeight: 500, borderRight: '2px solid var(--mantine-color-gray-4)' }}>Øvrig evaluering</Table.Td>
+                        <Table.Td style={{ fontWeight: 500, borderRight: '1px solid var(--mantine-color-default-border)' }}>Øvrig evaluering</Table.Td>
                         <Table.Td style={{ verticalAlign: 'top' }}>
                           <EditableField
                             value={currentEvaluation.elevensEvaluering?.øvrigEvaluering || ''}
@@ -916,19 +963,19 @@ export function Evaluation() {
 
                 {/* Lærerens evaluering */}
                 <div>
-                  <Title order={4} mb="md" style={{ backgroundColor: '#194541', color: 'white', padding: '12px 16px', borderRadius: '4px' }}>
+                  <Title order={4} mb={0} style={EVAL_STYLES.sectionHeader}>
                     Lærerens evaluering
                   </Title>
                   <Table withTableBorder style={{ borderWidth: '2px' }}>
                     <Table.Thead>
-                      <Table.Tr style={{ backgroundColor: '#29675a', borderBottom: '2px solid var(--mantine-color-gray-4)' }}>
-                        <Table.Th style={{ color: 'white', width: '200px', borderRight: '2px solid var(--mantine-color-gray-4)' }}>Område</Table.Th>
-                        <Table.Th style={{ color: 'white' }}>Evaluering</Table.Th>
+                      <Table.Tr style={{ backgroundColor: 'var(--mantine-color-default-hover)', borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+                        <Table.Th style={{ color: 'var(--mantine-color-dimmed)', width: '200px', borderRight: '1px solid var(--mantine-color-default-border)' }}>Område</Table.Th>
+                        <Table.Th style={{ color: 'var(--mantine-color-dimmed)' }}>Evaluering</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      <Table.Tr style={{ borderBottom: '2px solid var(--mantine-color-gray-4)' }}>
-                        <Table.Td style={{ fontWeight: 500, borderRight: '2px solid var(--mantine-color-gray-4)' }}>Fagligt</Table.Td>
+                      <Table.Tr style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+                        <Table.Td style={{ fontWeight: 500, borderRight: '1px solid var(--mantine-color-default-border)' }}>Fagligt</Table.Td>
                         <Table.Td style={{ verticalAlign: 'top' }}>
                           <EditableField
                             value={currentEvaluation.lærerensEvaluering?.fagligt || ''}
@@ -936,8 +983,8 @@ export function Evaluation() {
                           />
                         </Table.Td>
                       </Table.Tr>
-                      <Table.Tr style={{ borderBottom: '2px solid var(--mantine-color-gray-4)' }}>
-                        <Table.Td style={{ fontWeight: 500, borderRight: '2px solid var(--mantine-color-gray-4)' }}>Personligt</Table.Td>
+                      <Table.Tr style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+                        <Table.Td style={{ fontWeight: 500, borderRight: '1px solid var(--mantine-color-default-border)' }}>Personligt</Table.Td>
                         <Table.Td style={{ verticalAlign: 'top' }}>
                           <EditableField
                             value={currentEvaluation.lærerensEvaluering?.personligt || ''}
@@ -945,8 +992,8 @@ export function Evaluation() {
                           />
                         </Table.Td>
                       </Table.Tr>
-                      <Table.Tr style={{ borderBottom: '2px solid var(--mantine-color-gray-4)' }}>
-                        <Table.Td style={{ fontWeight: 500, borderRight: '2px solid var(--mantine-color-gray-4)' }}>Socialt</Table.Td>
+                      <Table.Tr style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+                        <Table.Td style={{ fontWeight: 500, borderRight: '1px solid var(--mantine-color-default-border)' }}>Socialt</Table.Td>
                         <Table.Td style={{ verticalAlign: 'top' }}>
                           <EditableField
                             value={currentEvaluation.lærerensEvaluering?.socialt || ''}
@@ -954,8 +1001,8 @@ export function Evaluation() {
                           />
                         </Table.Td>
                       </Table.Tr>
-                      <Table.Tr style={{ borderBottom: '2px solid var(--mantine-color-gray-4)' }}>
-                        <Table.Td style={{ fontWeight: 500, borderRight: '2px solid var(--mantine-color-gray-4)' }}>Arbejdsmæssigt</Table.Td>
+                      <Table.Tr style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+                        <Table.Td style={{ fontWeight: 500, borderRight: '1px solid var(--mantine-color-default-border)' }}>Arbejdsmæssigt</Table.Td>
                         <Table.Td style={{ verticalAlign: 'top' }}>
                           <EditableField
                             value={currentEvaluation.lærerensEvaluering?.arbejdsmæssigt || ''}
@@ -964,7 +1011,7 @@ export function Evaluation() {
                         </Table.Td>
                       </Table.Tr>
                       <Table.Tr>
-                        <Table.Td style={{ fontWeight: 500, borderRight: '2px solid var(--mantine-color-gray-4)' }}>Øvrig evaluering</Table.Td>
+                        <Table.Td style={{ fontWeight: 500, borderRight: '1px solid var(--mantine-color-default-border)' }}>Øvrig evaluering</Table.Td>
                         <Table.Td style={{ verticalAlign: 'top' }}>
                           <EditableField
                             value={currentEvaluation.lærerensEvaluering?.øvrigEvaluering || ''}

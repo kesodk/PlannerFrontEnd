@@ -1,6 +1,109 @@
 # Modulperiode System - AspIT
 
-## Oversigt
+> **Implementeringsstatus:** ✅ Fuldt implementeret med database-backend (marts 2026)
+
+---
+
+## NY IMPLEMENTERING (marts 2026) — Database-styrede modulperioder
+
+### Oversigt
+Modulperioder administreres nu via en dedikeret admin-side og gemmes i databasen med præcise start- og slutdatoer. Det manuelle beregningssystem bruges ikke længere til aktive modulperioder.
+
+### Admin-side
+Ruten: `/administration/modulperioder` (tilgængelig under Administration → Modulperioder i navigationen)
+
+Funktioner:
+- **Opret** nye modulperioder (kun fremtidige — startdato skal være efter dags dato)
+- **Rediger** eksisterende (kun fremtidige modulperioder kan redigeres)
+- **Slet** eksisterende (kun fremtidige modulperioder kan slettes)
+- Igangværende og afsluttede modulperioder er **låste**
+
+### Regler (business logic)
+| Status | Oprette | Redigere | Slette |
+|--------|---------|----------|--------|
+| Fremtidig | ✅ | ✅ | ✅ |
+| Igangværende | — | ❌ | ❌ |
+| Afsluttet | — | ❌ | ❌ |
+
+**Oprettelse via UI:** Startdato skal ligge i fremtiden (kun valideret i frontend — backend tillader historiske datoer, så administratorer kan indsætte ældre modulperioder direkte via seeder/API).
+
+### Database — `modulperioder`-tabellen
+```sql
+CREATE TABLE modulperioder (
+  id         BIGINT PRIMARY KEY AUTO_INCREMENT,
+  kode       VARCHAR(20) UNIQUE NOT NULL,  -- f.eks. "26-1-M1"
+  startdato  DATE NOT NULL,
+  slutdato   DATE NOT NULL,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+);
+```
+
+### Seeder
+- **Fil:** `database/seeders/ModulperiodeSeeder.php`
+- Kør med: `php artisan db:seed --class=ModulperiodeSeeder` (bruger `insertOrIgnore` — kan køres igen uden fejl)
+
+### Præ-seedede modulperioder (fra AspIT kalender)
+
+| Kode | Startdato | Slutdato |
+|------|-----------|----------|
+| 25-1-M1 | 2025-01-20 | 2025-03-16 |
+| 25-1-M2 | 2025-03-17 | 2025-05-11 |
+| 25-1-M3 | 2025-05-12 | 2025-06-27 |
+| 25-2-M1 | 2025-08-11 | 2025-09-21 |
+| 25-2-M2 | 2025-09-22 | 2025-11-16 |
+| 25-2-M3 | 2025-11-17 | 2026-01-18 |
+| 26-1-M1 | 2026-01-19 | 2026-03-15 |
+| 26-1-M2 | 2026-03-16 | 2026-05-10 |
+| 26-1-M3 | 2026-05-11 | 2026-06-26 |
+| 26-2-M1 | 2026-08-10 | 2026-09-20 |
+| 26-2-M2 | 2026-09-21 | 2026-11-15 |
+| 26-2-M3 | 2026-11-16 | 2027-01-17 |
+| 27-1-M1 | 2027-01-18 | 2027-03-14 |
+| 27-1-M2 | 2027-03-15 | 2027-05-09 |
+| 27-1-M3 | 2027-05-10 | 2027-06-25 |
+| 27-2-M1 | 2027-08-09 | 2027-09-19 |
+| 27-2-M2 | 2027-09-20 | 2027-11-14 |
+| 27-2-M3 | 2027-11-15 | 2028-01-17 |
+
+Slutdatoer for M1/M2 = dagen før næste periode starter (søndag).
+Slutdatoer for efterårets M3 = dagen før næste forårs M1 starter.
+Forår-afslutningsdatoer = SOMMERAFSLUTNING fra AspIT kalender.
+
+### Backend
+- **Migration:** `2026_03_07_000001_create_modulperioder_table.php`
+- **Model:** `app/Models/Modulperiode.php`
+  - Computed attribute `status` → `'Fremtidig' | 'Igangværende' | 'Afsluttet'`
+  - Metoder: `isFuture()`, `isPast()`, `isCurrent()`
+- **Controller:** `app/Http/Controllers/Api/ModulperiodeController.php`
+- **Routes:** (auth:sanctum)
+  ```
+  GET    /api/modulperioder          → Liste alle
+  POST   /api/modulperioder          → Opret (validates startdato > today)
+  PUT    /api/modulperioder/{id}     → Rediger (403 hvis ikke fremtidig)
+  DELETE /api/modulperioder/{id}     → Slet (403 hvis ikke fremtidig)
+  ```
+
+### Frontend
+- **Service:** `src/services/modulperiodeApi.ts` — TanStack Query hooks:
+  - `useModulperioder()` — henter alle
+  - `useCreateModulperiode()`
+  - `useUpdateModulperiode()`
+  - `useDeleteModulperiode()`
+- **Side:** `src/pages/Modulperioder.tsx`
+
+### Integration med Hold (Classes.tsx)
+`Classes.tsx` henter nu modulperioder fra API'et via `useModulperioder()`.
+- Dropdown til valg af modulperiode ved oprettelse/redigering af hold viser kun **igangværende og fremtidige** modulperioder.
+- Datoerne for holdet (startdato/slutdato) hentes direkte fra den valgte modulperiodes DB-data — ikke beregnet.
+
+---
+
+## HISTORISK IMPLEMENTERING (automatisk beregning)
+
+Det følgende beskriver det **gamle** system som nu er udfaset for nye modulperioder. Koden i `modulperiodeUtils.ts` eksisterer stadig men bruges kun som fallback/reference.
+
+
 
 AspIT opdeler skoleåret i **2 halvår**, hver med **3 modulperioder**. Hver modulperiode er cirka 6-7 uger og tilpasses efter skoleferier og helligdage.
 

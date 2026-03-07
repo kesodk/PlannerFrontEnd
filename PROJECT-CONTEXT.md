@@ -83,8 +83,6 @@ Mock-filerne i `/src/data/` eksisterer stadig men bruges ikke aktivt.
 
 ### ⏳ Ikke implementeret endnu
 - Fremmøde (Attendance)
-- Evaluéring
-- Lærere-admin
 
 ---
 
@@ -208,6 +206,4 @@ StudentAdminAPI/
 ## NÆSTE SKRIDT (ikke implementeret)
 
 - **Fremmøde-registrering** (Attendance.tsx er en stub)
-- **Evaluering** (Evaluation.tsx eksisterer men er primært mock-baseret)
-- **Lærere-administration** under Administration-siden
 - Overvej at tilføje **notifikationer** (Mantine notifications er allerede installeret og bruges i Classes.tsx)

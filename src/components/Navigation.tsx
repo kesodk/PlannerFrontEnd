@@ -12,7 +12,8 @@ import {
   IconCertificate,
   IconReportAnalytics,
   IconChevronDown,
-  IconChalkboard
+  IconChalkboard,
+  IconCalendarEvent,
 } from '@tabler/icons-react'
 import classes from './Navigation.module.css'
 
@@ -27,6 +28,7 @@ const adminLinks = [
   { label: 'Elever', icon: IconUsers, link: '/administration/students' },
   { label: 'Hold', icon: IconSchool, link: '/administration/classes' },
   { label: 'Undervisere', icon: IconChalkboard, link: '/administration/teachers' },
+  { label: 'Modulperioder', icon: IconCalendarEvent, link: '/administration/modulperioder' },
   { label: 'Bedømmelser', icon: IconCertificate, link: '/administration/assessments' },
   { label: 'Oversigter', icon: IconReportAnalytics, link: '/administration/overviews' },
 ]

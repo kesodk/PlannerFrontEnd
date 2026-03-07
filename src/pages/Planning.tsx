@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Group, Stack, Text, Box, Button, Modal, TextInput, Badge,
-  ActionIcon, Tabs, Textarea, ScrollArea, Divider, Paper,
+  ActionIcon, Tabs, ScrollArea, Divider, Paper,
   Tooltip, Loader, Center, ThemeIcon, UnstyledButton,
 } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
@@ -9,6 +9,7 @@ import {
   IconSearch, IconChevronLeft, IconChevronRight, IconDeviceFloppy,
   IconPlus, IconCopy, IconChalkboard, IconUsers, IconArrowRight,
   IconArrowLeft, IconTrash, IconBook,
+  IconBold, IconItalic, IconUnderline, IconStrikethrough, IconList, IconListNumbers, IconClearFormatting, IconLink,
 } from '@tabler/icons-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useClasses } from '../services/classApi'
@@ -37,6 +38,23 @@ function offsetWeek(week: number, year: number, offset: number): { week: number;
   return getISOWeekYear(targetMon)
 }
 
+/** Returns the Monday (UTC) of the given ISO week */
+function getWeekMonday(week: number, year: number): Date {
+  const jan4 = new Date(Date.UTC(year, 0, 4))
+  const dow = jan4.getUTCDay() || 7
+  const week1Mon = new Date(Date.UTC(year, 0, 4 - dow + 1))
+  return new Date(week1Mon.getTime() + (week - 1) * 7 * 86400000)
+}
+
+/** Returns true if the week (Mon–Fri) overlaps with [startdato, slutdato] */
+function isWeekWithinPeriod(week: number, year: number, startdato: string, slutdato: string): boolean {
+  const monday = getWeekMonday(week, year)
+  const friday = new Date(monday.getTime() + 4 * 86400000)
+  const start = new Date(startdato)
+  const end = new Date(slutdato)
+  return monday <= end && friday >= start
+}
+
 const DAGE = ['mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag'] as const
 const DAGE_LABELS: Record<string, string> = {
   mandag: 'Mandag', tirsdag: 'Tirsdag', onsdag: 'Onsdag', torsdag: 'Torsdag', fredag: 'Fredag',
@@ -44,6 +62,127 @@ const DAGE_LABELS: Record<string, string> = {
 const EMPTY_DAGE: UgeplanDag[] = DAGE.map(d => ({
   dag: d, formaal: '', laeringsmaal: '', indhold: '', materialer: '',
 }))
+
+// ─── PlanningToolbar ──────────────────────────────────────────────────────────
+
+function PlanningToolbar() {
+  const execCommand = (command: string) => {
+    document.execCommand(command, false, undefined)
+  }
+
+  const handleLink = () => {
+    const url = window.prompt('Indsæt URL:')
+    if (url) {
+      const normalizedUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`
+      document.execCommand('createLink', false, normalizedUrl)
+    }
+  }
+
+  return (
+    <Paper p="sm" withBorder style={{ flexShrink: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none', borderRadius: 0, backgroundColor: 'var(--mantine-color-body)' }}>
+      <Group gap="sm">
+        <Text size="sm" fw={500} mr="xs">Formatering:</Text>
+        <Tooltip label="Fed">
+          <ActionIcon variant="default" size="lg" onClick={() => execCommand('bold')}>
+            <IconBold size={20} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label="Kursiv">
+          <ActionIcon variant="default" size="lg" onClick={() => execCommand('italic')}>
+            <IconItalic size={20} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label="Understreget">
+          <ActionIcon variant="default" size="lg" onClick={() => execCommand('underline')}>
+            <IconUnderline size={20} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label="Gennemstreget">
+          <ActionIcon variant="default" size="lg" onClick={() => execCommand('strikeThrough')}>
+            <IconStrikethrough size={20} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label="Punktliste">
+          <ActionIcon variant="default" size="lg" onClick={() => execCommand('insertUnorderedList')}>
+            <IconList size={20} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label="Nummereret liste">
+          <ActionIcon variant="default" size="lg" onClick={() => execCommand('insertOrderedList')}>
+            <IconListNumbers size={20} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label="Ryd formatering">
+          <ActionIcon variant="default" size="lg" onClick={() => execCommand('removeFormat')}>
+            <IconClearFormatting size={20} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label="Indsæt link">
+          <ActionIcon variant="default" size="lg" onClick={handleLink}>
+            <IconLink size={20} />
+          </ActionIcon>
+        </Tooltip>
+      </Group>
+    </Paper>
+  )
+}
+
+// ─── EditableField ────────────────────────────────────────────────────────────
+
+function EditableField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const divRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (divRef.current && divRef.current.innerHTML !== value) {
+      divRef.current.innerHTML = value || ''
+    }
+  }, [value])
+
+  const handleInput = () => {
+    if (divRef.current) {
+      onChange(divRef.current.innerHTML)
+    }
+  }
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault()
+    const text = e.clipboardData.getData('text/plain')
+    document.execCommand('insertText', false, text)
+  }
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (e.ctrlKey) {
+      const target = (e.target as HTMLElement).closest('a')
+      if (target?.href) {
+        e.preventDefault()
+        window.open(target.href, '_blank', 'noopener,noreferrer')
+      }
+    }
+  }
+
+  return (
+    <div
+      ref={divRef}
+      contentEditable
+      suppressContentEditableWarning
+      onInput={handleInput}
+      onPaste={handlePaste}
+      onClick={handleClick}
+      style={{
+        minHeight: '60px',
+        width: '100%',
+        padding: '6px 8px',
+        outline: 'none',
+        cursor: 'text',
+        fontSize: '12px',
+        lineHeight: '1.65',
+        color: 'var(--mantine-color-text)',
+        whiteSpace: 'pre-wrap',
+        wordWrap: 'break-word',
+      }}
+    />
+  )
+}
 
 // ─── ClassCard ────────────────────────────────────────────────────────────────
 
@@ -60,6 +199,9 @@ function ClassCard({
     : fagUpper.startsWith('UP') ? 'violet'
     : fagUpper.startsWith('LAB') ? 'cyan'
     : 'blue'
+
+  const startWeek = klass.startdato ? getISOWeekYear(new Date(klass.startdato)).week : null
+  const slutWeek = klass.slutdato ? getISOWeekYear(new Date(klass.slutdato)).week : null
 
   return (
     <UnstyledButton w="100%" onClick={onSelect}>
@@ -81,6 +223,9 @@ function ClassCard({
             <Stack gap={0} style={{ minWidth: 0 }}>
               <Text fw={600} size="sm" truncate>{klass.laerer}</Text>
               <Text size="xs" c="dimmed">{klass.modulperiode} · {klass.studenter.length} elever</Text>
+              {startWeek !== null && slutWeek !== null && (
+                <Text size="xs" c="dimmed">uge {startWeek} → uge {slutWeek}</Text>
+              )}
             </Stack>
           </Group>
           <Tooltip label="Fjern hold" withArrow>
@@ -202,6 +347,16 @@ export function Planning() {
   const allAssignedIds = new Set(ugeplaner.flatMap(u => u.studenter.map(s => s.id)))
   const studenterUdenPlan = selectedClass?.studenter.filter(s => !allAssignedIds.has(s.id)) ?? []
 
+  // Period boundary helpers
+  const isCurrentWeekInPeriod = !selectedClass ||
+    isWeekWithinPeriod(week, year, selectedClass.startdato, selectedClass.slutdato)
+  const canNavPrev = !selectedClass ||
+    isWeekWithinPeriod(offsetWeek(week, year, -1).week, offsetWeek(week, year, -1).year,
+      selectedClass.startdato, selectedClass.slutdato)
+  const canNavNext = !selectedClass ||
+    isWeekWithinPeriod(offsetWeek(week, year, 1).week, offsetWeek(week, year, 1).year,
+      selectedClass.startdato, selectedClass.slutdato)
+
   // Reset edits when ugeplan selection changes
   useEffect(() => {
     if (selectedUgeplan) {
@@ -235,10 +390,31 @@ export function Planning() {
     setSelectedRight(null)
   }, [selectedClassId])
 
+  // Navigate to the correct week when a class is selected:
+  // - Stay on current week if it's within the new class's module period
+  // - Prefer today's week if it's in the period
+  // - Otherwise jump to the module period's start week
+  useEffect(() => {
+    if (!selectedClass?.startdato || !selectedClass?.slutdato) return
+    if (isWeekWithinPeriod(week, year, selectedClass.startdato, selectedClass.slutdato)) return
+    const todayWeek = getISOWeekYear(new Date())
+    if (isWeekWithinPeriod(todayWeek.week, todayWeek.year, selectedClass.startdato, selectedClass.slutdato)) {
+      setWeek(todayWeek.week)
+      setYear(todayWeek.year)
+    } else {
+      const startWeek = getISOWeekYear(new Date(selectedClass.startdato))
+      setWeek(startWeek.week)
+      setYear(startWeek.year)
+    }
+  }, [selectedClass?.id])
+
   // ─── Handlers ────────────────────────────────────────────────────────────────
 
   const handleWeekNav = (offset: number) => {
     const next = offsetWeek(week, year, offset)
+    if (selectedClass && !isWeekWithinPeriod(next.week, next.year, selectedClass.startdato, selectedClass.slutdato)) {
+      return // Don't navigate outside the module period
+    }
     setWeek(next.week)
     setYear(next.year)
     setSelectedUgeplanId(null)
@@ -450,42 +626,76 @@ export function Planning() {
               {!selectedUgeplan ? (
                 <Center style={{ flex: 1, flexDirection: 'column', gap: 12 }}>
                   <Text c="dimmed" size="sm">Ingen ugeplan for uge {week} · {year}</Text>
-                  <Button size="sm" variant="light" leftSection={<IconPlus size={14} />}
-                    onClick={handleCreatePlan} loading={createUgeplan.isPending}
-                  >
-                    Opret ugeplan
-                  </Button>
+                  {isCurrentWeekInPeriod ? (
+                    <Button size="sm" variant="light" leftSection={<IconPlus size={14} />}
+                      onClick={handleCreatePlan} loading={createUgeplan.isPending}
+                    >
+                      Opret ugeplan
+                    </Button>
+                  ) : (
+                    <Text size="xs" c="dimmed" ta="center">
+                      Uge {week} ligger uden for modulperiodens datoer
+                      {selectedClass?.startdato && ` (${new Date(selectedClass.startdato).toLocaleDateString('da-DK')} – ${new Date(selectedClass.slutdato).toLocaleDateString('da-DK')})`}
+                    </Text>
+                  )}
                 </Center>
               ) : (
-                <ScrollArea flex={1}>
-                  <Box p="sm" style={{ minWidth: 600 }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <>
+                  <PlanningToolbar />
+                  <ScrollArea flex={1}>
+                  <Box p="sm" style={{ minWidth: 700 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                      <colgroup>
+                        <col style={{ width: '110px' }} />
+                        <col style={{ width: '25%' }} />
+                        <col style={{ width: '25%' }} />
+                        <col style={{ width: '25%' }} />
+                        <col style={{ width: '25%' }} />
+                      </colgroup>
                       <thead>
-                        <tr>
-                          {['Dag', 'Formål', 'Læringsmål', 'Indhold og undervisningsform', 'Undervisningsmaterialer'].map(h => (
-                            <th key={h} style={{
+                        <tr style={{ borderBottom: '2px solid var(--mantine-color-default-border)' }}>
+                          {[
+                            { label: 'Dag', fixed: true },
+                            { label: 'Formål' },
+                            { label: 'Læringsmål' },
+                            { label: 'Indhold og undervisningsform' },
+                            { label: 'Undervisningsmaterialer' },
+                          ].map(({ label, fixed }, idx) => (
+                            <th key={label} style={{
                               padding: '8px 10px', textAlign: 'left', fontSize: 12, fontWeight: 600,
                               color: 'var(--mantine-color-dimmed)',
-                              borderBottom: '2px solid var(--mantine-color-gray-3)',
+                              borderRight: idx < 4 ? '1px solid var(--mantine-color-default-border)' : undefined,
+                              overflow: 'hidden',
+                              whiteSpace: fixed ? 'nowrap' : undefined,
                             }}>
-                              {h}
+                              {label}
                             </th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {editedDage.map((row, i) => (
-                          <tr key={row.dag} style={{ verticalAlign: 'top', backgroundColor: i % 2 === 0 ? 'transparent' : 'var(--mantine-color-gray-0)' }}>
-                            <td style={{ padding: '8px 10px', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap' }}>
+                          <tr key={row.dag} style={{
+                            verticalAlign: 'top',
+                            backgroundColor: i % 2 === 0 ? 'transparent' : 'light-dark(rgba(0,0,0,0.015), rgba(255,255,255,0.03))',
+                            borderBottom: '1px solid var(--mantine-color-default-border)',
+                          }}>
+                            <td style={{
+                              padding: '8px 10px', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap',
+                              borderRight: '1px solid var(--mantine-color-default-border)',
+                              color: 'var(--mantine-color-text)',
+                            }}>
                               {DAGE_LABELS[row.dag]}
                             </td>
-                            {(['formaal', 'laeringsmaal', 'indhold', 'materialer'] as const).map(field => (
-                              <td key={field} style={{ padding: '4px 6px' }}>
-                                <Textarea
+                            {(['formaal', 'laeringsmaal', 'indhold', 'materialer'] as const).map((field, idx) => (
+                              <td key={field} style={{
+                                padding: '2px 4px',
+                                borderRight: idx < 3 ? '1px solid var(--mantine-color-default-border)' : undefined,
+                                overflow: 'hidden',
+                              }}>
+                                <EditableField
                                   value={row[field]}
-                                  onChange={(e) => handleUpdateDag(row.dag, field, e.currentTarget.value)}
-                                  autosize minRows={2} size="xs" variant="filled"
-                                  styles={{ input: { fontSize: 12 } }}
+                                  onChange={(v) => handleUpdateDag(row.dag, field, v)}
                                 />
                               </td>
                             ))}
@@ -494,7 +704,8 @@ export function Planning() {
                       </tbody>
                     </table>
                   </Box>
-                </ScrollArea>
+                  </ScrollArea>
+                </>
               )}
             </Tabs.Panel>
 
@@ -586,34 +797,44 @@ export function Planning() {
         <ScrollArea flex={1} p="sm">
           {/* Week nav */}
           <Group justify="space-between" mb="xs" wrap="nowrap">
-            <ActionIcon size="sm" variant="subtle" onClick={() => handleWeekNav(-1)}>
+            <ActionIcon size="sm" variant="subtle" disabled={!canNavPrev} onClick={() => handleWeekNav(-1)}>
               <IconChevronLeft size={14} />
             </ActionIcon>
             <Stack gap={0} align="center">
               <Text fw={700} size="sm">Uge {week}</Text>
               <Text size="xs" c="dimmed">{year}</Text>
             </Stack>
-            <ActionIcon size="sm" variant="subtle" onClick={() => handleWeekNav(1)}>
+            <ActionIcon size="sm" variant="subtle" disabled={!canNavNext} onClick={() => handleWeekNav(1)}>
               <IconChevronRight size={14} />
             </ActionIcon>
           </Group>
 
           {/* Save */}
-          <Button
-            fullWidth size="sm" mb="md"
-            color={isDirty ? 'orange' : 'blue'}
-            leftSection={<IconDeviceFloppy size={14} />}
-            disabled={!selectedUgeplan || !isDirty}
-            loading={updateUgeplan.isPending}
-            onClick={handleSave}
-          >
-            {isDirty ? 'Gem ændringer' : 'Gemt'}
-          </Button>
+          {isDirty ? (
+            <Button
+              fullWidth size="sm" mb="md"
+              variant="light" color="orange"
+              leftSection={<IconDeviceFloppy size={14} />}
+              loading={updateUgeplan.isPending}
+              onClick={handleSave}
+            >
+              Gem ændringer
+            </Button>
+          ) : (
+            <Button
+              fullWidth size="sm" mb="md"
+              variant="default"
+              leftSection={<IconDeviceFloppy size={14} />}
+              disabled={!selectedUgeplan}
+            >
+              Gemt
+            </Button>
+          )}
 
           {/* Indhold actions */}
           {activeTab === 'indhold' && selectedClass && (
             <>
-              <Button fullWidth size="xs" variant="light" color="orange" mb="md"
+              <Button fullWidth size="xs" variant="outline" color="orange" mb="md"
                 leftSection={<IconCopy size={12} />}
                 disabled={!selectedUgeplan}
                 onClick={handleDuplicateToKladde}
@@ -626,12 +847,19 @@ export function Planning() {
 
           {/* Ugeplaner */}
           <Text fw={700} size="xs" tt="uppercase" c="dimmed" mb="xs">Ugens ugeplaner</Text>
-          <Button fullWidth size="xs" variant="subtle" mb="xs"
-            leftSection={<IconPlus size={12} />} disabled={!selectedClass}
-            onClick={handleCreatePlan} loading={createUgeplan.isPending}
+          <Tooltip
+            label={!isCurrentWeekInPeriod ? 'Ugen ligger uden for modulperiodens datoer' : undefined}
+            disabled={isCurrentWeekInPeriod}
+            withArrow
           >
-            Opret ugeplan
-          </Button>
+            <Button fullWidth size="xs" variant="subtle" mb="xs"
+              leftSection={<IconPlus size={12} />}
+              disabled={!selectedClass || !isCurrentWeekInPeriod}
+              onClick={handleCreatePlan} loading={createUgeplan.isPending}
+            >
+              Opret ugeplan
+            </Button>
+          </Tooltip>
           {!selectedClass ? (
             <Text size="xs" c="dimmed" mb="md">Vælg et hold</Text>
           ) : activeUgeplaner.length === 0 ? (

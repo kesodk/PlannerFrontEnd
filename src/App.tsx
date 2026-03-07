@@ -3,7 +3,7 @@ import { AppShell, Group, Text, ActionIcon, Button } from '@mantine/core'
 import { IconChevronRight, IconChevronLeft, IconLogout } from '@tabler/icons-react'
 import { useDisclosure } from '@mantine/hooks'
 import { Navigation } from './components/Navigation'
-import { Dashboard, Planning, Evaluation, Attendance, Students, Classes, Assessments, AssessmentDetail, Teachers, LoginPage } from './pages'
+import { Dashboard, Planning, Evaluation, Attendance, Students, Classes, Assessments, AssessmentDetail, Teachers, LoginPage, Modulperioder } from './pages'
 import { ThemeToggle } from './components/ThemeToggle'
 import { SidebarProvider } from './contexts/SidebarContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
@@ -88,6 +88,7 @@ function AppInner() {
             <Route path="/administration/assessments/:studentId" element={<AssessmentDetail />} />
             <Route path="/administration/overviews" element={<div>Oversigter - kommer snart</div>} />
             <Route path="/administration/teachers" element={<Teachers />} />
+            <Route path="/administration/modulperioder" element={<Modulperioder />} />
           </Routes>
         </SidebarProvider>
       </AppShell.Main>

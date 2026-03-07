@@ -18,6 +18,8 @@ export interface PinnedClass {
   laerer: string
   afdeling: string
   modulperiode: string
+  startdato: string
+  slutdato: string
   status: string
   studenter: PlanningStudent[]
 }

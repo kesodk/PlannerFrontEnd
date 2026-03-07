@@ -3,7 +3,7 @@ import { z } from 'zod'
 // Helper schema for CPR validation
 const cprSchema = z.string()
   .regex(/^\d{6}-?\d{4}$/, 'CPR skal være i format DDMMYY-XXXX eller DDMMYYXXXX')
-  .transform(val => val.replace('-', ''))
+  .transform(val => val.includes('-') ? val : `${val.slice(0, 6)}-${val.slice(6)}`)
 
 // Helper schema for email validation
 const emailSchema = z.string().email('Ugyldig email adresse').or(z.literal(''))

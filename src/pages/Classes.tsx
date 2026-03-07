@@ -28,19 +28,10 @@ import {
   useUnenrollStudent,
   type ClassData 
 } from '../services/classApi'
-import { availableFag, availableModulperioder } from '../data/mockClasses'
+import { availableFag } from '../data/mockClasses'
 import { useTeachers } from '../services/teacherApi'
 import { formatDate } from '../utils/dateUtils'
-import { canCreateClassForModulperiode, getModulperiodeDisplayName, parseModulperiode } from '../utils/modulperiodeUtils'
-
-// Beregn datoer fra modulperiode ved hjælp af den korrekte AspIT kalender-logik
-function getModulperiodeDates(modulperiode: string): { startdato: string; slutdato: string } {
-  const info = parseModulperiode(modulperiode)
-  return {
-    startdato: info.startDate.toISOString().split('T')[0],
-    slutdato: info.endDate.toISOString().split('T')[0],
-  }
-}
+import { useModulperioder } from '../services/modulperiodeApi'
 
 // Dato-safe sammenligning der ignorerer klokkeslæt (undgår timezone-problemer)
 function toDateOnly(date: Date): number {
@@ -84,6 +75,7 @@ export function Classes() {
   // API hooks
   const { data: students = [] } = useStudents()
   const { data: classes = [], isLoading: classesLoading, error: classesError, refetch: refetchClasses } = useClasses()
+  const { data: apiModulperioder = [] } = useModulperioder()
 
   const handleRefreshData = () => {
     refetchClasses()
@@ -101,8 +93,8 @@ export function Classes() {
 
   const selectedClass = classes.find(c => c.id === selectedClassId)
   
-  // Begræns til kun de 3 næstkommende modulperioder
-  const next3Modulperioder = availableModulperioder.slice(0, 3)
+  // Kun igangværende og fremtidige modulperioder kan bruges til nye hold
+  const validModulperioder = apiModulperioder.filter(m => m.status !== 'Afsluttet')
 
   // Filter classes
   const filteredClasses = classes.filter(cls => {
@@ -178,14 +170,14 @@ export function Classes() {
   const handleCreateClass = async () => {
     setValidationError(null)
     
-    // Valider modulperiode
-    const validation = canCreateClassForModulperiode(classForm.modulperiode)
-    if (!validation.valid) {
-      setValidationError(validation.reason || 'Ugyldig modulperiode')
+    // Find modulperiode i API-data og brug reelle datoer
+    const mpData = apiModulperioder.find(m => m.kode === classForm.modulperiode)
+    if (!mpData || mpData.status === 'Afsluttet') {
+      setValidationError('Kan ikke oprette hold for en afsluttet modulperiode.')
       return
     }
     
-    const { startdato, slutdato } = getModulperiodeDates(classForm.modulperiode)
+    const { startdato, slutdato } = mpData
     const navn = generateClassName(classForm.modulperiode, classForm.fag, classForm.lærer)
     
     const newClassData: Omit<ClassData, 'id'> = {
@@ -215,7 +207,9 @@ export function Classes() {
   const handleEditClass = async () => {
     if (!selectedClass) return
     
-    const { startdato, slutdato } = getModulperiodeDates(classForm.modulperiode)
+    const mpData = apiModulperioder.find(m => m.kode === classForm.modulperiode)
+    const startdato = mpData?.startdato ?? selectedClass.startdato
+    const slutdato = mpData?.slutdato ?? selectedClass.slutdato
     const navn = generateClassName(classForm.modulperiode, classForm.fag, classForm.lærer)
     
     const updatedClass: ClassData = {
@@ -540,20 +534,17 @@ export function Classes() {
           />
           <Select
             label="Modulperiode"
-            placeholder="Vælg modulperiode"
-            data={next3Modulperioder.map(m => {
-              const info = parseModulperiode(m)
-              const statusBadge = info.isCurrent ? ' 🟢' : ' 🔵'
-              return {
-                value: m, 
-                label: `${m}${statusBadge} (Modulperiode ${info.module}, ${info.isSpring ? 'Forår' : 'Efterår'} ${info.year})`
-              }
-            })}
+            placeholder={validModulperioder.length === 0 ? 'Ingen aktive modulperioder — opret under Administration' : 'Vælg modulperiode'}
+            data={validModulperioder.map(m => ({
+              value: m.kode,
+              label: `${m.kode} ${m.status === 'Igangværende' ? '🟢' : '🔵'} (${formatDate(m.startdato)} – ${formatDate(m.slutdato)})`
+            }))}
             value={classForm.modulperiode}
             onChange={(value) => {
               setClassForm({ ...classForm, modulperiode: value || '' })
-              setValidationError(null) // Clear error when changing
+              setValidationError(null)
             }}
+            disabled={validModulperioder.length === 0}
           />
           {validationError && (
             <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light">
@@ -617,14 +608,10 @@ export function Classes() {
           <Select
             label="Modulperiode"
             placeholder="Vælg modulperiode"
-            data={next3Modulperioder.map(m => {
-              const info = parseModulperiode(m)
-              const statusBadge = info.isCurrent ? ' 🟢' : ' 🔵'
-              return {
-                value: m, 
-                label: `${m}${statusBadge} (Modulperiode ${info.module}, ${info.isSpring ? 'Forår' : 'Efterår'} ${info.year})`
-              }
-            })}
+            data={validModulperioder.map(m => ({
+              value: m.kode,
+              label: `${m.kode} ${m.status === 'Igangværende' ? '🟢' : '🔵'} (${formatDate(m.startdato)} – ${formatDate(m.slutdato)})`
+            }))}
             value={classForm.modulperiode}
             onChange={(value) => setClassForm({ ...classForm, modulperiode: value || '' })}
           />
