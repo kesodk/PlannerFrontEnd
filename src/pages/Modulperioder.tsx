@@ -16,6 +16,8 @@ import {
   Tooltip,
   TextInput,
   Box,
+  Divider,
+  Paper,
 } from '@mantine/core'
 import { DatePickerInput } from '@mantine/dates'
 import { useForm } from '@mantine/form'
@@ -29,6 +31,9 @@ import {
   IconAlertCircle,
   IconCalendar,
   IconLock,
+  IconX,
+  IconArrowUp,
+  IconArrowDown,
 } from '@tabler/icons-react'
 import {
   useModulperioder,
@@ -36,6 +41,7 @@ import {
   useUpdateModulperiode,
   useDeleteModulperiode,
   type Modulperiode,
+  type FridagInput,
 } from '../services/modulperiodeApi'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -69,11 +75,19 @@ type FormValues = {
   slutdato: Date | null
 }
 
+type FridagEntry = {
+  titel: string
+  startdato: Date | null
+  slutdato: Date | null
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 function Modulperioder() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Modulperiode | null>(null)
+  const [fridage, setFridage] = useState<FridagEntry[]>([])
+  const [sortDesc, setSortDesc] = useState(true)
 
   const { data: modulperioder = [], isLoading, error, refetch } = useModulperioder()
   const createMutation = useCreateModulperiode()
@@ -110,6 +124,7 @@ function Modulperioder() {
   const openCreate = () => {
     setEditing(null)
     form.reset()
+    setFridage([])
     setModalOpen(true)
   }
 
@@ -120,16 +135,53 @@ function Modulperioder() {
       startdato: new Date(mp.startdato + 'T00:00:00'),
       slutdato: new Date(mp.slutdato + 'T00:00:00'),
     })
+    setFridage(
+      mp.fridage.map((f) => ({
+        titel: f.titel,
+        startdato: new Date(f.startdato + 'T00:00:00'),
+        slutdato: new Date(f.slutdato + 'T00:00:00'),
+      }))
+    )
     setModalOpen(true)
   }
 
   const handleSubmit = async (values: FormValues) => {
     if (!values.startdato || !values.slutdato) return
 
+    // Validate fridage
+    for (let i = 0; i < fridage.length; i++) {
+      const f = fridage[i]
+      if (!f.titel.trim()) {
+        notifications.show({ title: 'Fejl', message: `Særlig dag #${i + 1}: titel mangler`, color: 'red' })
+        return
+      }
+      if (!f.startdato) {
+        notifications.show({ title: 'Fejl', message: `Særlig dag #${i + 1}: startdato mangler`, color: 'red' })
+        return
+      }
+      if (!f.slutdato) {
+        notifications.show({ title: 'Fejl', message: `Særlig dag #${i + 1}: slutdato mangler`, color: 'red' })
+        return
+      }
+      if (f.slutdato < f.startdato) {
+        notifications.show({ title: 'Fejl', message: `Særlig dag #${i + 1}: slutdato skal være efter startdato`, color: 'red' })
+        return
+      }
+    }
+
+    const fridagePayload: FridagInput[] = fridage
+      .filter((f) => f.startdato && f.slutdato && f.titel.trim())
+      .map((f) => ({
+        titel: f.titel.trim(),
+        startdato: toIso(f.startdato!),
+        slutdato: toIso(f.slutdato!),
+      }))
+
     const payload = {
       kode: values.kode.trim(),
       startdato: toIso(values.startdato),
       slutdato: toIso(values.slutdato),
+      fridage: fridagePayload,
     }
 
     try {
@@ -150,6 +202,7 @@ function Modulperioder() {
       }
       setModalOpen(false)
       form.reset()
+      setFridage([])
     } catch (err: any) {
       notifications.show({
         title: 'Fejl',
@@ -191,13 +244,12 @@ function Modulperioder() {
 
   const isBusy = createMutation.isPending || updateMutation.isPending
 
-  // Sort: Afsluttet last, then by startdato ascending
-  const sorted = [...modulperioder].sort((a, b) => {
-    const order = { Fremtidig: 0, Igangværende: 1, Afsluttet: 2 }
-    const statusDiff = order[a.status] - order[b.status]
-    if (statusDiff !== 0) return statusDiff
-    return a.startdato.localeCompare(b.startdato)
-  })
+  // Sort: by startdato only (desc = newest first by default)
+  const sorted = [...modulperioder].sort((a, b) =>
+    sortDesc
+      ? b.startdato.localeCompare(a.startdato)
+      : a.startdato.localeCompare(b.startdato)
+  )
 
   return (
     <Container size="lg">
@@ -242,8 +294,17 @@ function Modulperioder() {
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Kode</Table.Th>
-              <Table.Th>Startdato</Table.Th>
+              <Table.Th
+                style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                onClick={() => setSortDesc((d) => !d)}
+              >
+                <Group gap={4} wrap="nowrap">
+                  Startdato
+                  {sortDesc ? <IconArrowDown size={14} /> : <IconArrowUp size={14} />}
+                </Group>
+              </Table.Th>
               <Table.Th>Slutdato</Table.Th>
+              <Table.Th>Fridage / Helligdage</Table.Th>
               <Table.Th>Status</Table.Th>
               <Table.Th style={{ width: 100, textAlign: 'center' }}>Handlinger</Table.Th>
             </Table.Tr>
@@ -263,6 +324,24 @@ function Modulperioder() {
                   <Table.Td fw={600}>{mp.kode}</Table.Td>
                   <Table.Td>{formatDate(mp.startdato)}</Table.Td>
                   <Table.Td>{formatDate(mp.slutdato)}</Table.Td>
+                  <Table.Td>
+                    {mp.fridage.length === 0 ? (
+                      <Text size="xs" c="dimmed">–</Text>
+                    ) : (
+                      <Stack gap={2}>
+                        {mp.fridage.map((f) => (
+                          <Group key={f.id} gap={4} wrap="nowrap">
+                            <Badge size="xs" color="orange" variant="light" style={{ flexShrink: 0 }}>
+                              {f.titel}
+                            </Badge>
+                            <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+                              {formatDate(f.startdato)}–{formatDate(f.slutdato)}
+                            </Text>
+                          </Group>
+                        ))}
+                      </Stack>
+                    )}
+                  </Table.Td>
                   <Table.Td>
                     <Badge color={statusColor(mp.status)} variant="light">
                       {STATUS_LABELS[mp.status]}
@@ -314,9 +393,9 @@ function Modulperioder() {
       {/* Create / Edit Modal */}
       <Modal
         opened={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => { setModalOpen(false); setFridage([]) }}
         title={editing ? `Rediger ${editing.kode}` : 'Opret ny modulperiode'}
-        size="md"
+        size="lg"
       >
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
@@ -348,12 +427,93 @@ function Modulperioder() {
               {...form.getInputProps('slutdato')}
             />
 
+            {/* ── Særlige dage / ferieperioder ── */}
+            <Divider label="Fridage og ferieperioder" labelPosition="left" />
+
+            <Text size="xs" c="dimmed">
+              Tilføj ferie- og helligdage inden for modulperioden. Disse dage markeres som undervisningsfri i
+              fremmødekalenderen og tæller ikke med i fraværsprocenten.
+            </Text>
+
+            <Stack gap="xs">
+              {fridage.map((f, idx) => (
+                <Paper key={idx} withBorder radius="sm" p="sm">
+                  <Stack gap="xs">
+                    <Group justify="space-between" align="center">
+                      <Text size="sm" fw={600} c="dimmed">Særlig dag #{idx + 1}</Text>
+                      <ActionIcon
+                        variant="subtle"
+                        color="red"
+                        size="sm"
+                        onClick={() => setFridage((prev) => prev.filter((_, i) => i !== idx))}
+                      >
+                        <IconX size={14} />
+                      </ActionIcon>
+                    </Group>
+
+                    <TextInput
+                      placeholder="f.eks. Påskeferie, Kristi Himmelfartsdag"
+                      label="Titel"
+                      size="sm"
+                      value={f.titel}
+                      onChange={(e) =>
+                        setFridage((prev) =>
+                          prev.map((item, i) => i === idx ? { ...item, titel: e.currentTarget.value } : item)
+                        )
+                      }
+                    />
+
+                    <Group grow gap="xs">
+                      <DatePickerInput
+                        label="Fra"
+                        placeholder="Startdato"
+                        valueFormat="DD/MM/YYYY"
+                        size="sm"
+                        value={f.startdato}
+                        onChange={(date) =>
+                          setFridage((prev) =>
+                            prev.map((item, i) => i === idx ? { ...item, startdato: date as Date | null } : item)
+                          )
+                        }
+                        minDate={form.values.startdato ?? undefined}
+                        maxDate={form.values.slutdato ?? undefined}
+                      />
+                      <DatePickerInput
+                        label="Til"
+                        placeholder="Slutdato"
+                        valueFormat="DD/MM/YYYY"
+                        size="sm"
+                        value={f.slutdato}
+                        onChange={(date) =>
+                          setFridage((prev) =>
+                            prev.map((item, i) => i === idx ? { ...item, slutdato: date as Date | null } : item)
+                          )
+                        }
+                        minDate={f.startdato ?? form.values.startdato ?? undefined}
+                        maxDate={form.values.slutdato ?? undefined}
+                      />
+                    </Group>
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
+
+            <Button
+              variant="light"
+              color="orange"
+              leftSection={<IconPlus size={14} />}
+              size="sm"
+              onClick={() => setFridage((prev) => [...prev, { titel: '', startdato: null, slutdato: null }])}
+            >
+              Tilføj ferie / helligdag
+            </Button>
+
             <Alert icon={<IconAlertCircle size={14} />} color="yellow" variant="light">
               Husk at en modulperiode, når den er oprettet og sat i gang, ikke kan ændres. Kontrollér datoerne nøje.
             </Alert>
 
             <Group justify="flex-end" mt="sm">
-              <Button variant="default" onClick={() => setModalOpen(false)}>
+              <Button variant="default" onClick={() => { setModalOpen(false); setFridage([]) }}>
                 Annuller
               </Button>
               <Button type="submit" loading={isBusy}>

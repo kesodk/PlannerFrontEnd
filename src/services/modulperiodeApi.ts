@@ -4,12 +4,26 @@ import { getApiBaseUrl } from '../config/apiConfig'
 const API_BASE_URL = getApiBaseUrl()
 const TOKEN_KEY = 'auth_token'
 
+export interface ModulperiodeFridag {
+  id: number
+  titel: string
+  startdato: string // "YYYY-MM-DD"
+  slutdato: string  // "YYYY-MM-DD"
+}
+
 export interface Modulperiode {
   id: number
   kode: string
   startdato: string
   slutdato: string
   status: 'Igangværende' | 'Fremtidig' | 'Afsluttet'
+  fridage: ModulperiodeFridag[]
+}
+
+export type FridagInput = {
+  titel: string
+  startdato: string
+  slutdato: string
 }
 
 export const modulperiodeKeys = {
@@ -60,7 +74,7 @@ export function useModulperioder() {
 export function useCreateModulperiode() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: { kode: string; startdato: string; slutdato: string }) =>
+    mutationFn: (data: { kode: string; startdato: string; slutdato: string; fridage?: FridagInput[] }) =>
       authenticatedFetch<Modulperiode>('/modulperioder', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -74,7 +88,7 @@ export function useCreateModulperiode() {
 export function useUpdateModulperiode() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<{ kode: string; startdato: string; slutdato: string }> }) =>
+    mutationFn: ({ id, data }: { id: number; data: Partial<{ kode: string; startdato: string; slutdato: string; fridage: FridagInput[] }> }) =>
       authenticatedFetch<Modulperiode>(`/modulperioder/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),

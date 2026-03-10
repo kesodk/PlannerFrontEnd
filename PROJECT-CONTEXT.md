@@ -77,12 +77,18 @@ Mock-filerne i `/src/data/` eksisterer stadig men bruges ikke aktivt.
   - Status-beregning (Aktiv/Afsluttet/Kommende) er timezone-safe via `toDateOnly()` i `dateUtils.ts`
   - "Opdater"-knap til at refreshe data
 - **Student enrollment/unenrollment på hold** — fungerer
-- **Modulperiode-system** — format: `ÅÅ-H-M#` (f.eks. "26-1-M1"), logik i `src/utils/modulperiodeUtils.ts`
+- **Fremmøde (Attendance)** — `src/pages/Attendance.tsx` + `src/services/attendanceApi.ts`
+  - Tabel: `attendance_records` (migration: `2026_03_07_100000_create_attendance_records_table.php`)
+  - Model: `StudentAdminAPI/app/Models/Attendance.php`
+  - Controller: `AttendanceController.php` (5 endpoints: byDate, byMonth, studentStats, upsert, destroy)
+  - Fri fredag regel: elever har fri på fredage i **lige** ISO-ugenumre
+  - `override_procent`: lærer kan tilsidesætte automatisk beregning (standardtider 08:45→15:00 = 375 min)
+  - Frontend utils: `isFreeFriday()`, `isSchoolDay()`, `beregnFremmoedeProcent()` i `dateUtils.ts`
 - **Login/Auth** — `src/pages/LoginPage.tsx` + `src/contexts/AuthContext.tsx`
 - **Planlægning (Planning-siden)** — se eget afsnit nedenfor
 
 ### ⏳ Ikke implementeret endnu
-- Fremmøde (Attendance)
+- Evaluations
 
 ---
 

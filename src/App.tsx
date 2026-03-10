@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
-import { AppShell, Group, Text, ActionIcon, Button } from '@mantine/core'
-import { IconChevronRight, IconChevronLeft, IconLogout } from '@tabler/icons-react'
-import { useDisclosure } from '@mantine/hooks'
+import { AppShell, Group, Text, ActionIcon, Button, Center, Stack, ThemeIcon } from '@mantine/core'
+import { IconChevronRight, IconChevronLeft, IconLogout, IconDeviceDesktop } from '@tabler/icons-react'
+import { useDisclosure, useViewportSize } from '@mantine/hooks'
 import { Navigation } from './components/Navigation'
 import { Dashboard, Planning, Evaluation, Attendance, Students, Classes, Assessments, AssessmentDetail, Teachers, LoginPage, Modulperioder } from './pages'
 import { ThemeToggle } from './components/ThemeToggle'
@@ -97,6 +97,27 @@ function AppInner() {
 }
 
 function App() {
+  const { width } = useViewportSize()
+
+  if (width > 0 && width < 1440) {
+    return (
+      <Center style={{ height: '100vh', padding: '2rem' }}>
+        <Stack align="center" gap="lg" maw={400} ta="center">
+          <ThemeIcon size={64} radius="xl" variant="light" color="blue">
+            <IconDeviceDesktop size={36} />
+          </ThemeIcon>
+          <Text fw={700} size="xl">AspIT Planner</Text>
+          <Text c="dimmed" size="sm">
+            AspIT Planner er ikke optimeret til mindre skærme og skal bruges på en desktop-computer.
+          </Text>
+          <Text c="dimmed" size="xs">
+            Din nuværende skærmbredde: {width}px — anbefalet minimum: 1440px
+          </Text>
+        </Stack>
+      </Center>
+    )
+  }
+
   return (
     <AuthProvider>
       <AppInner />
