@@ -211,5 +211,4 @@ StudentAdminAPI/
 
 ## NÆSTE SKRIDT (ikke implementeret)
 
-- **Fremmøde-registrering** (Attendance.tsx er en stub)
 - Overvej at tilføje **notifikationer** (Mantine notifications er allerede installeret og bruges i Classes.tsx)

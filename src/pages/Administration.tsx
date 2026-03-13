@@ -3,6 +3,7 @@ import { IconUsers, IconSchool, IconCertificate, IconReportAnalytics } from '@ta
 import { Students } from './Students'
 import { Classes } from './Classes'
 import { Assessments } from './Assessments'
+import { Oversigter } from './Oversigter'
 
 export function Administration() {
   const iconStyle = { width: rem(16), height: rem(16) }
@@ -40,8 +41,7 @@ export function Administration() {
         </Tabs.Panel>
 
         <Tabs.Panel value="overviews" pt="md">
-          <Title order={3} mb="md">Fagprioritering - Næste Modul</Title>
-          <p>Her vil der være en oversigt over alle elevers fagønsker til næste modul med prioriteret rækkefølge (1., 2., og 3. prioritet).</p>
+          <Oversigter />
         </Tabs.Panel>
       </Tabs>
     </Container>

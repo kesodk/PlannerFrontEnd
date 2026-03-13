@@ -20,6 +20,7 @@ import {
   RingProgress,
   Paper,
   Tabs,
+  SegmentedControl,
   ThemeIcon,
   Alert,
 } from '@mantine/core'
@@ -33,6 +34,7 @@ import {
   IconCalendar,
   IconTrash,
   IconAdjustments,
+  IconMoonStars,
 } from '@tabler/icons-react'
 import { useClasses, useClass } from '../services/classApi'
 import { useModulperioder } from '../services/modulperiodeApi'
@@ -51,6 +53,7 @@ import {
   beregnFremmoedeProcent,
   getISOWeek,
 } from '../utils/dateUtils'
+import { useTheme } from '../contexts/ThemeContext'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -58,6 +61,97 @@ const DANSKE_MND = [
   'Januar', 'Februar', 'Marts', 'April', 'Maj', 'Juni',
   'Juli', 'August', 'September', 'Oktober', 'November', 'December',
 ]
+
+type CalendarColorTokens = {
+  selectedBg: string
+  holidayBg: string
+  freeFridayBg: string
+  weekendBg: string
+  futureBg: string
+  selectedBorder: string
+  defaultBorder: string
+  noteDot: string
+  dayTextToday: string
+  dayTextFreeFriday: string
+  dayTextHoliday: string
+  barHigh: string
+  barMedium: string
+  barLow: string
+}
+
+type DarkCalendarPreset = 'calm' | 'highContrast' | 'neon'
+
+const CALENDAR_LIGHT_COLORS: CalendarColorTokens = {
+  selectedBg: 'var(--mantine-color-blue-light)',
+  holidayBg: 'var(--mantine-color-orange-light)',
+  freeFridayBg: 'var(--mantine-color-violet-light)',
+  weekendBg: 'var(--mantine-color-gray-3)',
+  futureBg: 'var(--mantine-color-gray-0)',
+  selectedBorder: 'var(--mantine-color-blue-5)',
+  defaultBorder: 'var(--mantine-color-gray-2)',
+  noteDot: 'var(--mantine-color-orange-5)',
+  dayTextToday: 'var(--mantine-color-blue-7)',
+  dayTextFreeFriday: 'var(--mantine-color-violet-7)',
+  dayTextHoliday: 'var(--mantine-color-orange-8)',
+  barHigh: '#2f9e44',
+  barMedium: '#f59f00',
+  barLow: '#e03131',
+}
+
+const CALENDAR_DARK_PRESETS: Record<DarkCalendarPreset, CalendarColorTokens> = {
+  calm: {
+    selectedBg: 'rgba(34, 139, 230, 0.22)',
+    holidayBg: 'rgba(245, 159, 0, 0.2)',
+    freeFridayBg: 'rgba(151, 117, 250, 0.2)',
+    weekendBg: 'rgba(134, 142, 150, 0.25)',
+    futureBg: 'rgba(33, 37, 41, 0.55)',
+    selectedBorder: 'rgba(116, 192, 252, 0.95)',
+    defaultBorder: 'rgba(73, 80, 87, 0.85)',
+    noteDot: '#ff922b',
+    dayTextToday: '#74c0fc',
+    dayTextFreeFriday: '#d0bfff',
+    dayTextHoliday: '#ffc078',
+    barHigh: '#69db7c',
+    barMedium: '#ffd43b',
+    barLow: '#ff8787',
+  },
+  highContrast: {
+    selectedBg: 'rgba(25, 113, 194, 0.45)',
+    holidayBg: 'rgba(247, 103, 7, 0.34)',
+    freeFridayBg: 'rgba(112, 72, 232, 0.38)',
+    weekendBg: 'rgba(73, 80, 87, 0.55)',
+    futureBg: 'rgba(26, 27, 30, 0.88)',
+    selectedBorder: '#a5d8ff',
+    defaultBorder: 'rgba(173, 181, 189, 0.75)',
+    noteDot: '#ffa94d',
+    dayTextToday: '#a5d8ff',
+    dayTextFreeFriday: '#e5dbff',
+    dayTextHoliday: '#ffd8a8',
+    barHigh: '#8ce99a',
+    barMedium: '#ffe066',
+    barLow: '#ffa8a8',
+  },
+  neon: {
+    selectedBg: 'rgba(0, 224, 255, 0.2)',
+    holidayBg: 'rgba(255, 179, 0, 0.2)',
+    freeFridayBg: 'rgba(174, 62, 201, 0.26)',
+    weekendBg: 'rgba(73, 80, 87, 0.38)',
+    futureBg: 'rgba(18, 21, 26, 0.78)',
+    selectedBorder: '#66d9ff',
+    defaultBorder: 'rgba(116, 120, 141, 0.9)',
+    noteDot: '#ffec99',
+    dayTextToday: '#99e9f2',
+    dayTextFreeFriday: '#eebefa',
+    dayTextHoliday: '#ffe066',
+    barHigh: '#38d9a9',
+    barMedium: '#ffd43b',
+    barLow: '#ff6b6b',
+  },
+}
+
+function lightDarkPair(light: string, dark: string): string {
+  return `light-dark(${light}, ${dark})`
+}
 
 /** Returns true if `date` falls inside any of the ferie/helligdag intervals */
 function isHoliday(date: Date, fridage: Array<{ startdato: string; slutdato: string; titel: string }>): string | null {
@@ -199,8 +293,38 @@ function TimeField({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function Attendance() {
+  const { colorScheme } = useTheme()
   const today = new Date()
   const todayStr = toISODateString(today)
+  const [darkPreset, setDarkPreset] = useState<DarkCalendarPreset>(() => {
+    const stored = localStorage.getItem('attendance-dark-calendar-preset')
+    if (stored === 'highContrast' || stored === 'neon' || stored === 'calm') return stored
+    return 'calm'
+  })
+
+  useEffect(() => {
+    localStorage.setItem('attendance-dark-calendar-preset', darkPreset)
+  }, [darkPreset])
+
+  const calendarColors = useMemo<CalendarColorTokens>(() => {
+    const dark = CALENDAR_DARK_PRESETS[darkPreset]
+    return {
+      selectedBg: lightDarkPair(CALENDAR_LIGHT_COLORS.selectedBg, dark.selectedBg),
+      holidayBg: lightDarkPair(CALENDAR_LIGHT_COLORS.holidayBg, dark.holidayBg),
+      freeFridayBg: lightDarkPair(CALENDAR_LIGHT_COLORS.freeFridayBg, dark.freeFridayBg),
+      weekendBg: lightDarkPair(CALENDAR_LIGHT_COLORS.weekendBg, dark.weekendBg),
+      futureBg: lightDarkPair(CALENDAR_LIGHT_COLORS.futureBg, dark.futureBg),
+      selectedBorder: lightDarkPair(CALENDAR_LIGHT_COLORS.selectedBorder, dark.selectedBorder),
+      defaultBorder: lightDarkPair(CALENDAR_LIGHT_COLORS.defaultBorder, dark.defaultBorder),
+      noteDot: lightDarkPair(CALENDAR_LIGHT_COLORS.noteDot, dark.noteDot),
+      dayTextToday: lightDarkPair(CALENDAR_LIGHT_COLORS.dayTextToday, dark.dayTextToday),
+      dayTextFreeFriday: lightDarkPair(CALENDAR_LIGHT_COLORS.dayTextFreeFriday, dark.dayTextFreeFriday),
+      dayTextHoliday: lightDarkPair(CALENDAR_LIGHT_COLORS.dayTextHoliday, dark.dayTextHoliday),
+      barHigh: lightDarkPair(CALENDAR_LIGHT_COLORS.barHigh, dark.barHigh),
+      barMedium: lightDarkPair(CALENDAR_LIGHT_COLORS.barMedium, dark.barMedium),
+      barLow: lightDarkPair(CALENDAR_LIGHT_COLORS.barLow, dark.barLow),
+    }
+  }, [darkPreset])
 
   // ── Selection state ──
   const [selectedClassId,     setSelectedClassId]     = useState<number | null>(null)
@@ -537,6 +661,24 @@ export function Attendance() {
           {/* ─ Registrering tab ─ */}
           <Tabs.Panel value="registrering">
             <Card withBorder radius="md" padding="xs">
+              {colorScheme === 'dark' && (
+                <Group justify="flex-end" mb="xs" px="xs" gap="xs">
+                  <ThemeIcon size="sm" variant="light" color="gray" radius="xl">
+                    <IconMoonStars size={14} />
+                  </ThemeIcon>
+                  <SegmentedControl
+                    size="xs"
+                    value={darkPreset}
+                    onChange={(value) => setDarkPreset(value as DarkCalendarPreset)}
+                    data={[
+                      { label: 'Rolig', value: 'calm' },
+                      { label: 'Hoj Kontrast', value: 'highContrast' },
+                      { label: 'Neon', value: 'neon' },
+                    ]}
+                  />
+                </Group>
+              )}
+
               {/* Month navigation */}
               <Group justify="space-between" mb="xs" px="xs">
                 <ActionIcon
@@ -587,14 +729,14 @@ export function Attendance() {
                   const hasNote     = !!(rec?.note)
 
                   let bgColor: string | undefined
-                  if (isSelected)      bgColor = 'var(--mantine-color-blue-light)'
-                  else if (isHolidayDay) bgColor = 'var(--mantine-color-orange-light)'
-                  else if (isFridag)   bgColor = 'var(--mantine-color-violet-light)'
-                  else if (isWkend)    bgColor = 'var(--mantine-color-gray-3)'
-                  else if (isFuture)   bgColor = 'var(--mantine-color-gray-0)'
+                  if (isSelected)      bgColor = calendarColors.selectedBg
+                  else if (isHolidayDay) bgColor = calendarColors.holidayBg
+                  else if (isFridag)   bgColor = calendarColors.freeFridayBg
+                  else if (isWkend)    bgColor = calendarColors.weekendBg
+                  else if (isFuture)   bgColor = calendarColors.futureBg
 
                   const barColor = proc !== null
-                    ? proc >= 90 ? '#2f9e44' : proc >= 75 ? '#f59f00' : '#e03131'
+                    ? proc >= 90 ? calendarColors.barHigh : proc >= 75 ? calendarColors.barMedium : calendarColors.barLow
                     : undefined
 
                   const isNonSelectable = isWkend || isFridag || isFuture || isHolidayDay
@@ -611,11 +753,11 @@ export function Attendance() {
                           borderRadius: 6,
                           backgroundColor: bgColor,
                           border: isSelected
-                            ? '2px solid var(--mantine-color-blue-5)'
-                            : '1px solid var(--mantine-color-gray-2)',
+                            ? `2px solid ${calendarColors.selectedBorder}`
+                            : `1px solid ${calendarColors.defaultBorder}`,
                           borderBottom: isSelected
-                            ? '2px solid var(--mantine-color-blue-5)'
-                            : '1px solid var(--mantine-color-gray-2)',
+                            ? `2px solid ${calendarColors.selectedBorder}`
+                            : `1px solid ${calendarColors.defaultBorder}`,
                           cursor: isNonSelectable ? 'default' : 'pointer',
                           opacity: isFuture && !isWkend && !isHolidayDay ? 0.6 : 1,
                         }}
@@ -629,14 +771,23 @@ export function Attendance() {
                             width: 7,
                             height: 7,
                             borderRadius: '50%',
-                            backgroundColor: 'var(--mantine-color-orange-5)',
+                            backgroundColor: calendarColors.noteDot,
                             pointerEvents: 'none',
                           }} />
                         )}
                         <Text
                           size="sm"
                           fw={isToday ? 700 : 400}
-                          c={isToday ? 'blue' : isFridag ? 'violet' : isHolidayDay ? 'orange' : isWkend ? 'dimmed' : 'inherit'}
+                          c={isWkend ? 'dimmed' : 'inherit'}
+                          style={{
+                            color: isToday
+                              ? calendarColors.dayTextToday
+                              : isFridag
+                                ? calendarColors.dayTextFreeFriday
+                                : isHolidayDay
+                                  ? calendarColors.dayTextHoliday
+                                  : undefined,
+                          }}
                           ta="left"
                         >
                           {day.getDate()}
@@ -686,9 +837,9 @@ export function Attendance() {
               {/* Legend */}
               <Group gap="md" mt="sm" px="xs" wrap="wrap">
                 {[
-                  { color: '#2f9e44', label: '≥ 90 %' },
-                  { color: '#f59f00', label: '75–90 %' },
-                  { color: '#e03131', label: '< 75 %' },
+                  { color: calendarColors.barHigh, label: '≥ 90 %' },
+                  { color: calendarColors.barMedium, label: '75–90 %' },
+                  { color: calendarColors.barLow, label: '< 75 %' },
                 ].map(({ color, label }) => (
                   <Group key={label} gap={4}>
                     <div style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: color }} />
@@ -696,15 +847,15 @@ export function Attendance() {
                   </Group>
                 ))}
                 <Group gap={4}>
-                  <div style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: 'var(--mantine-color-violet-3)' }} />
+                  <div style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: calendarColors.freeFridayBg }} />
                   <Text size="xs" c="dimmed">Undervisningsfri</Text>
                 </Group>
                 <Group gap={4}>
-                  <div style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: 'var(--mantine-color-orange-3)' }} />
+                  <div style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: calendarColors.holidayBg }} />
                   <Text size="xs" c="dimmed">Ferie / helligdag</Text>
                 </Group>
                 <Group gap={4}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--mantine-color-orange-5)' }} />
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: calendarColors.noteDot }} />
                   <Text size="xs" c="dimmed">Note tilføjet</Text>
                 </Group>
               </Group>

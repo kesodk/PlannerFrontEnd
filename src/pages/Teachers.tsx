@@ -42,11 +42,19 @@ import type { Teacher, Department, TeacherPayload } from '../types/Teacher'
 
 const DEPARTMENTS: Department[] = ['Trekanten', 'Østjylland', 'Sønderjylland', 'Storkøbenhavn']
 
+const DEPARTMENT_COLORS: Record<Department, string> = {
+  Trekanten:     'blue',
+  Østjylland:    'teal',
+  Sønderjylland: 'orange',
+  Storkøbenhavn: 'violet',
+}
+
 type TeacherFormValues = {
   navn: string
   initialer: string
   email: string
   telefon: string
+  rolle: string
   afdelinger: Department[]
   aktiv: boolean
   password: string
@@ -59,8 +67,8 @@ function validate(values: TeacherFormValues, isEditing: boolean) {
     errors.navn = 'Navn er påkrævet'
   if (!values.initialer.trim())
     errors.initialer = 'Initialer er påkrævet'
-  if (!/^[A-ZÆØÅ]{2,5}$/.test(values.initialer.toUpperCase()))
-    errors.initialer = 'Initialer skal være 2-5 store bogstaver'
+  if (!/^[A-ZÆØÅ]{4}$/.test(values.initialer.toUpperCase()))
+    errors.initialer = 'Initialer skal være præcis 4 store bogstaver'
   if (!values.email.trim())
     errors.email = 'Email er påkrævet'
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email))
@@ -110,6 +118,7 @@ export function Teachers() {
       initialer: '',
       email: '',
       telefon: '',
+      rolle: '',
       afdelinger: [],
       aktiv: true,
       password: '',
@@ -130,6 +139,7 @@ export function Teachers() {
       initialer:  teacher.initialer,
       email:      teacher.email,
       telefon:    teacher.telefon ?? '',
+      rolle:      teacher.rolle ?? '',
       afdelinger: teacher.afdelinger,
       aktiv:      teacher.aktiv,
       password:   '',
@@ -143,6 +153,7 @@ export function Teachers() {
       initialer:  values.initialer.trim().toUpperCase(),
       email:      values.email.trim().toLowerCase(),
       telefon:    values.telefon.trim() || undefined,
+      rolle:      values.rolle.trim() || undefined,
       afdelinger: values.afdelinger,
       aktiv:      values.aktiv,
       ...(values.password ? { password: values.password } : {}),
@@ -210,12 +221,19 @@ export function Teachers() {
       </Table.Td>
       <Table.Td>{teacher.email}</Table.Td>
       <Table.Td>{teacher.telefon ?? '—'}</Table.Td>
+      <Table.Td>{teacher.rolle ?? '—'}</Table.Td>
       <Table.Td>
-        <Group gap={4} wrap="wrap">
-          {teacher.afdelinger.map((a) => (
-            <Badge key={a} variant="outline" size="sm" color="indigo">{a}</Badge>
+        <Stack gap={4}>
+          {Array.from({ length: Math.ceil(teacher.afdelinger.length / 2) }, (_, i) =>
+            teacher.afdelinger.slice(i * 2, i * 2 + 2)
+          ).map((row, i) => (
+            <Group key={i} gap={4} wrap="nowrap">
+              {row.map((a) => (
+                <Badge key={a} variant="outline" size="sm" color={DEPARTMENT_COLORS[a as Department] ?? 'gray'}>{a}</Badge>
+              ))}
+            </Group>
           ))}
-        </Group>
+        </Stack>
       </Table.Td>
       <Table.Td>
         <Badge color={teacher.aktiv ? 'green' : 'red'} variant="dot">
@@ -273,7 +291,7 @@ export function Teachers() {
         <Chip.Group multiple value={afdelingFilter} onChange={(v) => setAfdelingFilter(v)}>
           <Group gap={6}>
             {DEPARTMENTS.map((d) => (
-              <Chip key={d} value={d} size="sm" variant="light">{d}</Chip>
+              <Chip key={d} value={d} size="sm" variant="light" color={DEPARTMENT_COLORS[d]}>{d}</Chip>
             ))}
           </Group>
         </Chip.Group>
@@ -308,6 +326,7 @@ export function Teachers() {
               <Table.Th>Initialer</Table.Th>
               <Table.Th>Email</Table.Th>
               <Table.Th>Telefon</Table.Th>
+              <Table.Th>Rolle</Table.Th>
               <Table.Th>
                 <UnstyledButton onClick={() => handleSort('afdeling')} style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
                   Afdeling(er) <SortIcon field="afdeling" />
@@ -336,31 +355,50 @@ export function Teachers() {
         }
         size="md"
       >
-        <form onSubmit={form.onSubmit(handleSubmit)}>
+        <form onSubmit={form.onSubmit(handleSubmit)} autoComplete="off">
           <Stack gap="sm">
             <TextInput
               label="Fulde navn"
               placeholder="F.eks. Marie Nielsen"
               required
+              autoComplete="off"
               {...form.getInputProps('navn')}
+              onChange={(e) => {
+                const navn = e.currentTarget.value
+                form.setFieldValue('navn', navn)
+                if (!editingTeacher) {
+                  const parts = navn.trim().split(/\s+/).filter(Boolean)
+                  if (parts.length >= 2) {
+                    const ini = (parts[0].slice(0, 2) + parts[parts.length - 1].slice(0, 2)).toUpperCase()
+                    form.setFieldValue('initialer', ini)
+                    form.setFieldValue('email', ini.toLowerCase() + '@aspit.dk')
+                  }
+                }
+              }}
             />
 
             <TextInput
               label="Initialer"
-              placeholder="F.eks. MAN"
-              description="2-5 store bogstaver – bruges til login"
+              placeholder="F.eks. MARA"
+              description="Præcis 4 store bogstaver – bruges til login (2 fra fornavn + 2 fra efternavn)"
               required
-              maxLength={5}
+              maxLength={4}
+              autoComplete="off"
               {...form.getInputProps('initialer')}
-              onChange={(e) =>
-                form.setFieldValue('initialer', e.currentTarget.value.toUpperCase())
-              }
+              onChange={(e) => {
+                const ini = e.currentTarget.value.toUpperCase()
+                form.setFieldValue('initialer', ini)
+                if (!editingTeacher) {
+                  form.setFieldValue('email', ini.toLowerCase() + '@aspit.dk')
+                }
+              }}
             />
 
             <TextInput
               label="Email"
-              placeholder="man@aspit.dk"
+              placeholder="mara@aspit.dk"
               required
+              autoComplete="off"
               {...form.getInputProps('email')}
             />
 
@@ -368,6 +406,12 @@ export function Teachers() {
               label="Telefon"
               placeholder="23 45 67 89"
               {...form.getInputProps('telefon')}
+            />
+
+            <TextInput
+              label="Rolle"
+              placeholder="F.eks. Underviser, Afdelingsleder"
+              {...form.getInputProps('rolle')}
             />
 
             <MultiSelect

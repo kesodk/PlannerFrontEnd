@@ -7,6 +7,7 @@ export interface Teacher {
   navn: string
   email: string
   telefon?: string
+  rolle?: string
   afdelinger: Department[]  // En lærer kan dække flere afdelinger
   aktiv: boolean
 }
@@ -17,6 +18,7 @@ export interface TeacherPayload {
   navn: string
   email: string
   telefon?: string
+  rolle?: string
   afdelinger: Department[]
   aktiv: boolean
   password?: string

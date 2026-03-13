@@ -17,7 +17,6 @@ import {
   Paper,
   Loader,
   Center,
-  Overlay,
   Divider,
   SegmentedControl,
   Alert
@@ -137,7 +136,7 @@ function GlobalToolbar({ onExport, onStu, onSave, isSaving }: {
 }
 
 // Editable Field Component
-function EditableField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+function EditableField({ value, onChange, disabled = false }: { value: string; onChange: (value: string) => void; disabled?: boolean }) {
   const divRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -171,7 +170,7 @@ function EditableField({ value, onChange }: { value: string; onChange: (value: s
   return (
     <div
       ref={divRef}
-      contentEditable
+      contentEditable={!disabled}
       suppressContentEditableWarning
       onInput={handleInput}
       onPaste={handlePaste}
@@ -182,7 +181,7 @@ function EditableField({ value, onChange }: { value: string; onChange: (value: s
         maxWidth: '100%',
         padding: '10px 12px',
         outline: 'none',
-        cursor: 'text',
+        cursor: disabled ? 'not-allowed' : 'text',
         textAlign: 'left',
         direction: 'ltr',
         whiteSpace: 'pre-wrap',
@@ -195,6 +194,7 @@ function EditableField({ value, onChange }: { value: string; onChange: (value: s
         letterSpacing: '0.01em',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         color: 'var(--mantine-color-text)',
+        opacity: disabled ? 0.6 : 1,
       }}
     />
   )
@@ -205,13 +205,20 @@ export function Evaluation() {
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null)
   const [evaluationType, setEvaluationType] = useState<'Formativ' | 'Summativ'>('Formativ')
   const [currentEvaluation, setCurrentEvaluation] = useState<Evaluation | null>(null)
+  const [evaluationDrafts, setEvaluationDrafts] = useState<Record<'Formativ' | 'Summativ', Evaluation | null>>({
+    Formativ: null,
+    Summativ: null,
+  })
+  const [selectedEvaluationByType, setSelectedEvaluationByType] = useState<Record<'Formativ' | 'Summativ', number | null>>({
+    Formativ: null,
+    Summativ: null,
+  })
   const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [exportModalOpen, setExportModalOpen] = useState(false)
   const [exportScope, setExportScope] = useState<'formativ' | 'summativ'>('formativ')
   const [stuModalOpen, setStuModalOpen] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [evaluationToDelete, setEvaluationToDelete] = useState<number | null>(null)
-  const [shaking, setShaking] = useState(false)
 
   const { data: students = [], isLoading: studentsLoading } = useStudents()
   const { data: classes = [], isLoading: classesLoading } = useClasses()
@@ -221,22 +228,13 @@ export function Evaluation() {
   const deleteEvaluation = useDeleteEvaluation()
   const exportEvaluation = useExportEvaluation()
 
-  // Shake animation interval – fires every 3 seconds when no evaluation is loaded
-  useEffect(() => {
-    if (selectedStudentId && !currentEvaluation) {
-      // trigger immediately on student select
-      setShaking(true)
-      const shakeTimeout = setTimeout(() => setShaking(false), 600)
-      const interval = setInterval(() => {
-        setShaking(true)
-        setTimeout(() => setShaking(false), 600)
-      }, 12000)
-      return () => {
-        clearInterval(interval)
-        clearTimeout(shakeTimeout)
-      }
-    }
-  }, [selectedStudentId, currentEvaluation])
+  const updateCurrentEvaluation = (evaluation: Evaluation | null) => {
+    setCurrentEvaluation(evaluation)
+    setEvaluationDrafts((prev) => ({
+      ...prev,
+      [evaluationType]: evaluation,
+    }))
+  }
 
   // Get active classes (Igangværende)
   const activeClasses = classes.filter(c => c.status === 'Igangværende')
@@ -315,28 +313,41 @@ export function Evaluation() {
       }
     }
 
-    setCurrentEvaluation(newEvaluation)
+    updateCurrentEvaluation(newEvaluation)
+    setSelectedEvaluationByType((prev) => ({
+      ...prev,
+      [evaluationType]: null,
+    }))
   }
 
   // Load existing evaluation
   const loadEvaluation = (evaluationId: number) => {
     const evaluation = evaluations.find(e => e.id === evaluationId)
     if (evaluation) {
-      setCurrentEvaluation({ ...evaluation })
+      const evaluationCopy = { ...evaluation }
       setEvaluationType(evaluation.type)
+      setCurrentEvaluation(evaluationCopy)
+      setEvaluationDrafts((prev) => ({
+        ...prev,
+        [evaluation.type]: evaluationCopy,
+      }))
+      setSelectedEvaluationByType((prev) => ({
+        ...prev,
+        [evaluation.type]: evaluation.id ?? null,
+      }))
     }
   }
 
   // Update evaluation field
   const updateEvaluationField = (field: keyof Evaluation, value: any) => {
     if (!currentEvaluation) return
-    setCurrentEvaluation({ ...currentEvaluation, [field]: value })
+    updateCurrentEvaluation({ ...currentEvaluation, [field]: value })
   }
 
   // Update goal field
   const updateGoalField = (goalType: 'fagligtMål' | 'personligtMål' | 'socialtMål' | 'arbejdsmæssigtMål', field: keyof EvaluationGoal, value: string) => {
     if (!currentEvaluation) return
-    setCurrentEvaluation({
+    updateCurrentEvaluation({
       ...currentEvaluation,
       [goalType]: {
         ...currentEvaluation[goalType],
@@ -348,7 +359,7 @@ export function Evaluation() {
   // Update summative field
   const updateSummativeField = (evaluationType: 'elevensEvaluering' | 'lærerensEvaluering', field: string, value: string) => {
     if (!currentEvaluation) return
-    setCurrentEvaluation({
+    updateCurrentEvaluation({
       ...currentEvaluation,
       [evaluationType]: {
         ...currentEvaluation[evaluationType],
@@ -372,13 +383,26 @@ export function Evaluation() {
       if (isExisting) {
         // Update existing
         const updated = await updateEvaluation.mutateAsync(evaluationToSave)
-        if (updated) setCurrentEvaluation(updated)
+        if (updated) {
+          updateCurrentEvaluation(updated)
+          setSelectedEvaluationByType((prev) => ({
+            ...prev,
+            [evaluationType]: updated.id ?? null,
+          }))
+        }
       } else {
         // Create new - strip id if present
         const { id, ...evaluationData } = evaluationToSave as any
         const created = await createEvaluation.mutateAsync(evaluationData)
         // Update local state with returned ID so subsequent saves do updates
-        if (created?.id) setCurrentEvaluation({ ...evaluationToSave, id: created.id })
+        if (created?.id) {
+          const savedEvaluation = { ...evaluationToSave, id: created.id }
+          updateCurrentEvaluation(savedEvaluation)
+          setSelectedEvaluationByType((prev) => ({
+            ...prev,
+            [evaluationType]: created.id,
+          }))
+        }
       }
       setSaveModalOpen(true)
     } catch (error: any) {
@@ -398,7 +422,19 @@ export function Evaluation() {
       setEvaluationToDelete(null)
       // Clear current evaluation if it was the one deleted
       if (currentEvaluation?.id === evaluationToDelete) {
-        setCurrentEvaluation(null)
+        updateCurrentEvaluation(null)
+      }
+
+      const deletedEvaluation = evaluations.find((e) => e.id === evaluationToDelete)
+      if (deletedEvaluation) {
+        setSelectedEvaluationByType((prev) => ({
+          ...prev,
+          [deletedEvaluation.type]: prev[deletedEvaluation.type] === evaluationToDelete ? null : prev[deletedEvaluation.type],
+        }))
+        setEvaluationDrafts((prev) => ({
+          ...prev,
+          [deletedEvaluation.type]: prev[deletedEvaluation.type]?.id === evaluationToDelete ? null : prev[deletedEvaluation.type],
+        }))
       }
     } catch (error: any) {
       console.error('❌ Failed to delete evaluation:', error)
@@ -414,16 +450,29 @@ export function Evaluation() {
     setSelectedHoldId(holdId)
     setSelectedStudentId(null)
     setCurrentEvaluation(null)
+    setEvaluationDrafts({ Formativ: null, Summativ: null })
+    setSelectedEvaluationByType({ Formativ: null, Summativ: null })
+    setEvaluationType('Formativ')
   }
 
   // Handle student selection
   const handleStudentSelect = (studentId: number) => {
     setSelectedStudentId(studentId)
     setCurrentEvaluation(null)
+    setEvaluationDrafts({ Formativ: null, Summativ: null })
+    setSelectedEvaluationByType({ Formativ: null, Summativ: null })
+    setEvaluationType('Formativ')
   }
 
   const selectedClass = classes.find(c => c.id === selectedHoldId)
   const selectedStudent = students.find(s => s.id === selectedStudentId)
+
+  const handleEvaluationTypeChange = (value: string | null) => {
+    if (!value) return
+    const newType = value as 'Formativ' | 'Summativ'
+    setEvaluationType(newType)
+    setCurrentEvaluation(evaluationDrafts[newType] ? { ...evaluationDrafts[newType]! } : null)
+  }
 
   // Show loading state
   if (studentsLoading || classesLoading || evaluationsLoading) {
@@ -492,10 +541,53 @@ export function Evaluation() {
         {/* Midter kolonne - Evalueringsformular */}
         <Grid.Col span={8}>
           {selectedStudent && selectedClass && !currentEvaluation ? (
-            /* Greyed-out placeholder when student selected but no evaluation loaded */
-            <Card shadow="sm" padding="lg" radius="md" withBorder style={{ height: 'calc(100vh - 120px)', overflow: 'hidden', position: 'relative' }}>
-              {/* Ghost form structure - visually disabled */}
-              <div style={{ opacity: 0.12, pointerEvents: 'none', userSelect: 'none' }}>
+            <Card shadow="sm" padding="lg" radius="md" withBorder style={{ height: 'calc(100vh - 120px)', overflow: 'auto' }}>
+              <Tabs value={evaluationType} onChange={handleEvaluationTypeChange} mb="md">
+                <Tabs.List style={{ gap: '8px' }}>
+                  <Tabs.Tab
+                    value="Formativ"
+                    style={{
+                      cursor: 'pointer',
+                      borderRadius: 8,
+                      border: '1px solid var(--mantine-color-default-border)',
+                      backgroundColor:
+                        evaluationType === 'Formativ'
+                          ? 'light-dark(var(--mantine-color-blue-1), var(--mantine-color-blue-9))'
+                          : 'var(--mantine-color-body)',
+                      fontWeight: evaluationType === 'Formativ' ? 700 : 500,
+                      boxShadow:
+                        evaluationType === 'Formativ'
+                          ? '0 0 0 1px var(--mantine-color-blue-6) inset'
+                          : 'none',
+                      transition: 'all 120ms ease',
+                    }}
+                  >
+                    Formativ
+                  </Tabs.Tab>
+                  <Tabs.Tab
+                    value="Summativ"
+                    style={{
+                      cursor: 'pointer',
+                      borderRadius: 8,
+                      border: '1px solid var(--mantine-color-default-border)',
+                      backgroundColor:
+                        evaluationType === 'Summativ'
+                          ? 'light-dark(var(--mantine-color-blue-1), var(--mantine-color-blue-9))'
+                          : 'var(--mantine-color-body)',
+                      fontWeight: evaluationType === 'Summativ' ? 700 : 500,
+                      boxShadow:
+                        evaluationType === 'Summativ'
+                          ? '0 0 0 1px var(--mantine-color-blue-6) inset'
+                          : 'none',
+                      transition: 'all 120ms ease',
+                    }}
+                  >
+                    Summativ
+                  </Tabs.Tab>
+                </Tabs.List>
+              </Tabs>
+
+              <div style={{ opacity: 0.35, pointerEvents: 'none', userSelect: 'none' }}>
                 <Group justify="space-between" mb="md">
                   <Stack gap={4}>
                     <Title order={3}>{selectedStudent.navn}</Title>
@@ -505,88 +597,105 @@ export function Evaluation() {
                       <Text size="sm" c="dimmed">Oprettet af: KESO</Text>
                     </Group>
                   </Stack>
-                  <Group gap="xs">
-                    <Button color="blue" variant="outline">Eksporter til fil</Button>
-                    <Button color="teal" variant="outline">STU-indstilling</Button>
-                    <Button color="orange">Gem</Button>
-                  </Group>
                 </Group>
-                <Stack gap="lg" mt="md">
-                  {['Fagligt mål', 'Personligt mål', 'Socialt mål', 'Arbejdsmæssigt mål'].map(title => (
-                    <div key={title}>
-                      <Title order={5} mb={0} style={EVAL_STYLES.sectionHeader}>
-                        {title}
-                      </Title>
-                      <Table withTableBorder style={{ tableLayout: 'fixed' }}>
-                        <Table.Thead>
-                          <Table.Tr style={EVAL_STYLES.thRow}>
-                            <Table.Th style={EVAL_STYLES.th1}>Individuelle mål</Table.Th>
-                            <Table.Th style={EVAL_STYLES.th2}>Læringsmål</Table.Th>
-                            <Table.Th style={EVAL_STYLES.th3}>Indhold og handlinger</Table.Th>
-                            <Table.Th style={EVAL_STYLES.th4}>Opfyldelseskriterier</Table.Th>
-                          </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>
-                          <Table.Tr>
-                            <Table.Td style={{ height: 64 }} />
-                            <Table.Td />
-                            <Table.Td />
-                            <Table.Td />
-                          </Table.Tr>
-                        </Table.Tbody>
-                      </Table>
-                    </div>
-                  ))}
-                </Stack>
-              </div>
-              {/* Overlay + top-aligned message */}
-              <Overlay backgroundBlur={1} opacity={0.25} zIndex={10} />
-              <style>{`
-                @keyframes shake {
-                  0%   { transform: translateX(0); }
-                  15%  { transform: translateX(-8px); }
-                  30%  { transform: translateX(8px); }
-                  45%  { transform: translateX(-6px); }
-                  60%  { transform: translateX(6px); }
-                  75%  { transform: translateX(-3px); }
-                  90%  { transform: translateX(3px); }
-                  100% { transform: translateX(0); }
-                }
-                .shake-box { animation: none; }
-                .shake-box.shaking { animation: shake 0.55s ease-in-out; }
-              `}</style>
-              <div style={{ position: 'absolute', inset: 0, zIndex: 20, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', flexDirection: 'column', paddingTop: 80 }}>
-                <Paper
-                  className={`shake-box${shaking ? ' shaking' : ''}`}
-                  shadow="md"
-                  radius="md"
-                  p="lg"
-                  withBorder
-                  style={{
-                    backgroundColor: 'var(--mantine-color-body)',
-                    borderColor: 'var(--mantine-color-gray-3)',
-                    textAlign: 'center',
-                    maxWidth: 420,
-                    margin: '0 auto',
-                    width: '100%'
-                  }}
-                >
-                  {studentEvaluations.length === 0 ? (
-                    <Stack gap={6} align="center">
-                      <Text fw={700} size="lg">Eleven har ingen evalueringer endnu</Text>
-                      <Text size="sm" c="dimmed">Tryk „Opret evaluering“ i højre side for at begynde</Text>
-                    </Stack>
-                  ) : (
-                    <Stack gap={6} align="center">
-                      <Text fw={700} size="lg">Ingen evaluering valgt</Text>
-                      <Text size="sm" c="dimmed">Vælg en evaluering fra listen, eller opret en ny</Text>
-                    </Stack>
-                  )}
-                </Paper>
+
+                {evaluationType === 'Formativ' ? (
+                  <Stack gap="lg" mt="md">
+                    {['Fagligt mål', 'Personligt mål', 'Socialt mål', 'Arbejdsmæssigt mål'].map(title => (
+                      <div key={title}>
+                        <Title order={5} mb={0} style={EVAL_STYLES.sectionHeader}>{title}</Title>
+                        <Table withTableBorder style={{ tableLayout: 'fixed' }}>
+                          <Table.Thead>
+                            <Table.Tr style={EVAL_STYLES.thRow}>
+                              <Table.Th style={EVAL_STYLES.th1}>Individuelle mål</Table.Th>
+                              <Table.Th style={EVAL_STYLES.th2}>Læringsmål</Table.Th>
+                              <Table.Th style={EVAL_STYLES.th3}>Indhold og handlinger</Table.Th>
+                              <Table.Th style={EVAL_STYLES.th4}>Opfyldelseskriterier</Table.Th>
+                            </Table.Tr>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            <Table.Tr>
+                              <Table.Td style={{ height: 64 }} />
+                              <Table.Td />
+                              <Table.Td />
+                              <Table.Td />
+                            </Table.Tr>
+                          </Table.Tbody>
+                        </Table>
+                      </div>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Stack gap="lg" mt="md">
+                    {['Elevens evaluering', 'Lærerens evaluering'].map(title => (
+                      <div key={title}>
+                        <Title order={4} mb={0} style={EVAL_STYLES.sectionHeader}>{title}</Title>
+                        <Table withTableBorder>
+                          <Table.Thead>
+                            <Table.Tr style={EVAL_STYLES.thRow}>
+                              <Table.Th style={{ ...EVAL_STYLES.th1, width: '200px' }}>Område</Table.Th>
+                              <Table.Th style={EVAL_STYLES.th2}>Evaluering</Table.Th>
+                            </Table.Tr>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            <Table.Tr><Table.Td style={{ height: 48 }} /> <Table.Td /></Table.Tr>
+                            <Table.Tr><Table.Td style={{ height: 48 }} /> <Table.Td /></Table.Tr>
+                            <Table.Tr><Table.Td style={{ height: 48 }} /> <Table.Td /></Table.Tr>
+                          </Table.Tbody>
+                        </Table>
+                      </div>
+                    ))}
+                  </Stack>
+                )}
               </div>
             </Card>
           ) : currentEvaluation && selectedStudent && selectedClass ? (
             <Card shadow="sm" padding="lg" radius="md" withBorder style={{ height: 'calc(100vh - 120px)', overflow: 'auto' }}>
+              <Tabs value={evaluationType} onChange={handleEvaluationTypeChange} mb="md">
+                <Tabs.List style={{ gap: '8px' }}>
+                  <Tabs.Tab
+                    value="Formativ"
+                    style={{
+                      cursor: 'pointer',
+                      borderRadius: 8,
+                      border: '1px solid var(--mantine-color-default-border)',
+                      backgroundColor:
+                        evaluationType === 'Formativ'
+                          ? 'light-dark(var(--mantine-color-blue-1), var(--mantine-color-blue-9))'
+                          : 'var(--mantine-color-body)',
+                      fontWeight: evaluationType === 'Formativ' ? 700 : 500,
+                      boxShadow:
+                        evaluationType === 'Formativ'
+                          ? '0 0 0 1px var(--mantine-color-blue-6) inset'
+                          : 'none',
+                      transition: 'all 120ms ease',
+                    }}
+                  >
+                    Formativ
+                  </Tabs.Tab>
+                  <Tabs.Tab
+                    value="Summativ"
+                    style={{
+                      cursor: 'pointer',
+                      borderRadius: 8,
+                      border: '1px solid var(--mantine-color-default-border)',
+                      backgroundColor:
+                        evaluationType === 'Summativ'
+                          ? 'light-dark(var(--mantine-color-blue-1), var(--mantine-color-blue-9))'
+                          : 'var(--mantine-color-body)',
+                      fontWeight: evaluationType === 'Summativ' ? 700 : 500,
+                      boxShadow:
+                        evaluationType === 'Summativ'
+                          ? '0 0 0 1px var(--mantine-color-blue-6) inset'
+                          : 'none',
+                      transition: 'all 120ms ease',
+                    }}
+                  >
+                    Summativ
+                  </Tabs.Tab>
+                </Tabs.List>
+              </Tabs>
+
               <Group justify="space-between" mb="md">
                 <Stack gap={4}>
                   <Title order={3}>{selectedStudent.navn}</Title>
@@ -612,55 +721,6 @@ export function Evaluation() {
                 onSave={handleSave}
                 isSaving={createEvaluation.isPending || updateEvaluation.isPending}
               />
-
-              <Tabs 
-                value={evaluationType} 
-                onChange={(value) => {
-                  const newType = value as 'Formativ' | 'Summativ'
-                  setEvaluationType(newType)
-                  // Auto-load the newest evaluation for the selected tab, if one exists
-                  const newest = studentEvaluations.find(e => e.type === newType)
-                  if (newest?.id) {
-                    loadEvaluation(newest.id)
-                  } else {
-                    setCurrentEvaluation(null)
-                  }
-                }} 
-                mb="md"
-              >
-                <Tabs.List 
-                  style={{ 
-                    gap: '4px'
-                  }}
-                >
-                  <Tabs.Tab 
-                    value="Formativ"
-                    style={{
-                      border: '1px solid var(--mantine-color-gray-4)',
-                      borderBottom: 'none',
-                      backgroundColor: evaluationType === 'Formativ' ? 'var(--mantine-color-body)' : 'light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6))',
-                      borderTop: evaluationType === 'Formativ' ? '3px solid var(--mantine-color-blue-filled)' : '1px solid var(--mantine-color-gray-4)',
-                      fontWeight: evaluationType === 'Formativ' ? 600 : 400,
-                      color: evaluationType === 'Formativ' ? 'var(--mantine-color-text)' : 'light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2))'
-                    }}
-                  >
-                    Formativ
-                  </Tabs.Tab>
-                  <Tabs.Tab 
-                    value="Summativ"
-                    style={{
-                      border: '1px solid var(--mantine-color-gray-4)',
-                      borderBottom: 'none',
-                      backgroundColor: evaluationType === 'Summativ' ? 'var(--mantine-color-body)' : 'light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6))',
-                      borderTop: evaluationType === 'Summativ' ? '3px solid var(--mantine-color-blue-filled)' : '1px solid var(--mantine-color-gray-4)',
-                      fontWeight: evaluationType === 'Summativ' ? 600 : 400,
-                      color: evaluationType === 'Summativ' ? 'var(--mantine-color-text)' : 'light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2))'
-                    }}
-                  >
-                    Summativ
-                  </Tabs.Tab>
-                </Tabs.List>
-              </Tabs>
 
               {evaluationType === 'Formativ' ? (
               <Stack gap="lg">
@@ -1064,7 +1124,18 @@ export function Evaluation() {
                       padding="xs"
                       radius="sm"
                       withBorder
-                      style={{ position: 'relative' }}
+                      style={{
+                        position: 'relative',
+                        cursor: 'pointer',
+                        backgroundColor:
+                          selectedEvaluationByType[evaluationType] === evaluation.id
+                            ? 'var(--mantine-color-blue-light)'
+                            : undefined,
+                        borderColor:
+                          selectedEvaluationByType[evaluationType] === evaluation.id
+                            ? 'var(--mantine-color-blue-6)'
+                            : undefined,
+                      }}
                     >
                       <div style={{ cursor: 'pointer' }} onClick={() => loadEvaluation(evaluation.id)}>
                         <Text size="sm" fw={500}>{evaluation.oprettetAf}</Text>
@@ -1225,6 +1296,7 @@ export function Evaluation() {
                     id: currentEvaluation.id,
                     format: 'pdf',
                     scope: exportScope,
+                    studentName: selectedStudent?.navn,
                   })
                   setExportModalOpen(false)
                   notifications.show({
@@ -1253,6 +1325,7 @@ export function Evaluation() {
                     id: currentEvaluation.id,
                     format: 'docx',
                     scope: exportScope,
+                    studentName: selectedStudent?.navn,
                   })
                   setExportModalOpen(false)
                   notifications.show({
@@ -1281,6 +1354,7 @@ export function Evaluation() {
                     id: currentEvaluation.id,
                     format: 'txt',
                     scope: exportScope,
+                    studentName: selectedStudent?.navn,
                   })
                   setExportModalOpen(false)
                   notifications.show({

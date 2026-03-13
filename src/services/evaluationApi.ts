@@ -112,12 +112,14 @@ export function useExportEvaluation() {
       id,
       format,
       scope = 'formativ',
+      studentName,
     }: {
       id: number
       format: 'pdf' | 'docx' | 'txt'
       scope?: 'formativ' | 'summativ'
+      studentName?: string
     }) => {
-      const { blob, filename } = await apiService.exportEvaluation(id, format, scope)
+      const { blob, filename } = await apiService.exportEvaluation(id, format, scope, studentName)
       triggerBlobDownload(blob, filename)
     },
   })

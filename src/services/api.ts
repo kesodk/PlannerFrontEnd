@@ -392,9 +392,11 @@ class ApiService {
    */
   async exportEvaluation(
     id: number,
-    format: 'pdf' | 'docx',
-    scope: 'formativ' | 'summativ' | 'both' = 'formativ'
+    format: 'pdf' | 'docx' | 'txt',
+    scope: 'formativ' | 'summativ' | 'both' = 'formativ',
+    studentName?: string
   ): Promise<{ blob: Blob; filename: string }> {
+    const nameSlug = studentName ? studentName.trim().replace(/\s+/g, '-') + '-' : ''
     const token = await this.ensureAuthenticated()
 
     const headers: Record<string, string> = {
@@ -427,7 +429,7 @@ class ApiService {
         throw new Error(`Export fejlede (${retryResponse.status}): ${text}`)
       }
       const blob = await retryResponse.blob()
-      const filename = extractFilename(retryResponse, `Evaluering.${format}`)
+      const filename = extractFilename(retryResponse, `${nameSlug}Evaluering.${format}`)
       return { blob, filename }
     }
 
@@ -437,7 +439,7 @@ class ApiService {
     }
 
     const blob = await response.blob()
-    const filename = extractFilename(response, `Evaluering.${format}`)
+    const filename = extractFilename(response, `${nameSlug}Evaluering.${format}`)
     return { blob, filename }
   }
 
