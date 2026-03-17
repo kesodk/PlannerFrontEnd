@@ -19,15 +19,18 @@ import {
   Center,
   Divider,
   SegmentedControl,
-  Alert
+  Alert,
+  Switch,
+  Textarea,
 } from '@mantine/core'
 import { IconBold, IconItalic, IconUnderline, IconStrikethrough, IconList, IconListNumbers, IconClearFormatting, IconLink, IconCheck, IconX, IconTrash, IconPlus, IconFileTypePdf, IconFileWord, IconFileText } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
 import { useStudents } from '../services/studentApi'
 import { useClasses } from '../services/classApi'
-import { useEvaluations, useCreateEvaluation, useUpdateEvaluation, useDeleteEvaluation, useExportEvaluation } from '../services/evaluationApi'
+import { useEvaluations, useCreateEvaluation, useUpdateEvaluation, useDeleteEvaluation, useExportEvaluation, useStudentAftaler, useCreateStudentAftale, useToggleStudentAftale } from '../services/evaluationApi'
 import { availableFag } from '../data/mockClasses'
 import type { Evaluation, EvaluationGoal } from '../types/Evaluation'
+import { useAuth } from '../contexts/AuthContext'
 
 // Column and section styles for evaluation tables
 const EVAL_STYLES = {
@@ -53,9 +56,8 @@ const EVAL_STYLES = {
 }
 
 // Global Toolbar Component
-function GlobalToolbar({ onExport, onStu, onSave, isSaving }: {
+function GlobalToolbar({ onExport, onSave, isSaving }: {
   onExport?: () => void
-  onStu?: () => void
   onSave?: () => void
   isSaving?: boolean
 }) {
@@ -122,9 +124,6 @@ function GlobalToolbar({ onExport, onStu, onSave, isSaving }: {
             <Button size="sm" color="blue" variant="outline" onClick={onExport}>
               Eksporter til fil
             </Button>
-            <Button size="sm" color="teal" variant="outline" onClick={onStu}>
-              STU-indstilling
-            </Button>
             <Button size="sm" color="orange" onClick={onSave} loading={isSaving}>
               Gem
             </Button>
@@ -136,7 +135,7 @@ function GlobalToolbar({ onExport, onStu, onSave, isSaving }: {
 }
 
 // Editable Field Component
-function EditableField({ value, onChange, disabled = false }: { value: string; onChange: (value: string) => void; disabled?: boolean }) {
+function EditableField({ value, onChange, disabled = false, minHeight = 70, padding = '10px 12px' }: { value: string; onChange: (value: string) => void; disabled?: boolean; minHeight?: number; padding?: string }) {
   const divRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -176,10 +175,10 @@ function EditableField({ value, onChange, disabled = false }: { value: string; o
       onPaste={handlePaste}
       onClick={handleClick}
       style={{
-        minHeight: '70px',
+        minHeight: `${minHeight}px`,
         width: '100%',
         maxWidth: '100%',
-        padding: '10px 12px',
+        padding,
         outline: 'none',
         cursor: disabled ? 'not-allowed' : 'text',
         textAlign: 'left',
@@ -201,6 +200,7 @@ function EditableField({ value, onChange, disabled = false }: { value: string; o
 }
 
 export function Evaluation() {
+  const { user } = useAuth()
   const [selectedHoldId, setSelectedHoldId] = useState<number | null>(null)
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null)
   const [evaluationType, setEvaluationType] = useState<'Formativ' | 'Summativ'>('Formativ')
@@ -216,9 +216,9 @@ export function Evaluation() {
   const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [exportModalOpen, setExportModalOpen] = useState(false)
   const [exportScope, setExportScope] = useState<'formativ' | 'summativ'>('formativ')
-  const [stuModalOpen, setStuModalOpen] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [evaluationToDelete, setEvaluationToDelete] = useState<number | null>(null)
+  const [newAftaleText, setNewAftaleText] = useState('')
 
   const { data: students = [], isLoading: studentsLoading } = useStudents()
   const { data: classes = [], isLoading: classesLoading } = useClasses()
@@ -227,6 +227,9 @@ export function Evaluation() {
   const updateEvaluation = useUpdateEvaluation()
   const deleteEvaluation = useDeleteEvaluation()
   const exportEvaluation = useExportEvaluation()
+  const { data: studentAftaler = [], isLoading: aftaleLoading } = useStudentAftaler(selectedStudentId)
+  const createAftale = useCreateStudentAftale()
+  const toggleAftale = useToggleStudentAftale()
 
   const updateCurrentEvaluation = (evaluation: Evaluation | null) => {
     setCurrentEvaluation(evaluation)
@@ -250,9 +253,11 @@ export function Evaluation() {
   const studentEvaluations = selectedStudentId
     ? evaluations
         .filter(e => e.studentId === selectedStudentId && e.id)
-        .sort((a, b) => 
-          new Date(b.dato).getTime() - new Date(a.dato).getTime()
-        )
+        .sort((a, b) => {
+          const bTime = new Date(b.createdAt || b.dato).getTime()
+          const aTime = new Date(a.createdAt || a.dato).getTime()
+          return bTime - aTime
+        })
     : []
 
   // Initialize empty evaluation
@@ -267,7 +272,7 @@ export function Evaluation() {
       type: evaluationType,
       dato: new Date().toISOString().split('T')[0],
       modulperiode: classData?.modulperiode || '',
-      oprettetAf: 'KESO',
+      oprettetAf: user?.initialer || 'UKENDT',
       fagligtMål: {
         individueleMål: '',
         læringsmål: '',
@@ -297,6 +302,11 @@ export function Evaluation() {
       næsteModulPrioritet2: '',
       næsteModulPrioritet3: '',
       bemærkninger: '',
+      forløbsplanMål: '',
+      fagligtForløbsplanDelmål: '',
+      personligtForløbsplanDelmål: '',
+      socialtForløbsplanDelmål: '',
+      arbejdsmæssigtForløbsplanDelmål: '',
       elevensEvaluering: {
         fagligt: '',
         personligt: '',
@@ -464,6 +474,21 @@ export function Evaluation() {
     setEvaluationType('Formativ')
   }
 
+  // Create new aftale
+  const handleCreateAftale = async () => {
+    if (!selectedStudentId || !newAftaleText.trim()) return
+    try {
+      await createAftale.mutateAsync({
+        studentId: selectedStudentId,
+        initialer: user?.initialer || 'KESO',
+        tekst: newAftaleText.trim(),
+      })
+      setNewAftaleText('')
+    } catch (error: any) {
+      alert(`Kunne ikke oprette aftale: ${error?.message || 'Ukendt fejl'}`)
+    }
+  }
+
   const selectedClass = classes.find(c => c.id === selectedHoldId)
   const selectedStudent = students.find(s => s.id === selectedStudentId)
 
@@ -594,7 +619,7 @@ export function Evaluation() {
                     <Group gap="md">
                       <Text size="sm" c="dimmed">Dato: {new Date().toLocaleDateString('da-DK')}</Text>
                       <Text size="sm" c="dimmed">Modulperiode: {selectedClass.modulperiode}</Text>
-                      <Text size="sm" c="dimmed">Oprettet af: KESO</Text>
+                      <Text size="sm" c="dimmed">Oprettet af: {user?.initialer || 'UKENDT'}</Text>
                     </Group>
                   </Stack>
                 </Group>
@@ -717,15 +742,37 @@ export function Evaluation() {
                   setExportScope(evaluationType.toLowerCase() as 'formativ' | 'summativ')
                   setExportModalOpen(true)
                 }}
-                onStu={() => setStuModalOpen(true)}
                 onSave={handleSave}
                 isSaving={createEvaluation.isPending || updateEvaluation.isPending}
               />
 
               {evaluationType === 'Formativ' ? (
               <Stack gap="lg">
+                {/* Mål fra forløbsplan/STU-indstilling */}
+                <div>
+                  <Title order={5} mb="xs">Mål fra forløbsplan/STU-indstilling</Title>
+                  <Paper withBorder p="xs" style={{ minHeight: 90 }}>
+                    <EditableField
+                      value={currentEvaluation.forløbsplanMål || ''}
+                      onChange={(value) => updateEvaluationField('forløbsplanMål', value)}
+                      padding="4px 8px"
+                    />
+                  </Paper>
+                </div>
+
                 {/* Fagligt mål */}
                 <div>
+                  <Text size="sm" c="dimmed" mb={4}>
+                    Det faglige mål er et delmål til det følgende mål fra forløbsplanen:
+                  </Text>
+                  <Paper withBorder p="xs" mb="xs">
+                    <EditableField
+                      value={currentEvaluation.fagligtForløbsplanDelmål || ''}
+                      onChange={(value) => updateEvaluationField('fagligtForløbsplanDelmål', value)}
+                      minHeight={34}
+                      padding="4px 8px"
+                    />
+                  </Paper>
                   <Title order={5} mb={0} style={EVAL_STYLES.sectionHeader}>
                     Fagligt mål
                   </Title>
@@ -771,6 +818,17 @@ export function Evaluation() {
 
                 {/* Personligt mål */}
                 <div>
+                  <Text size="sm" c="dimmed" mb={4}>
+                    Det personlige mål er et delmål til det følgende mål fra forløbsplanen:
+                  </Text>
+                  <Paper withBorder p="xs" mb="xs">
+                    <EditableField
+                      value={currentEvaluation.personligtForløbsplanDelmål || ''}
+                      onChange={(value) => updateEvaluationField('personligtForløbsplanDelmål', value)}
+                      minHeight={34}
+                      padding="4px 8px"
+                    />
+                  </Paper>
                   <Title order={5} mb={0} style={EVAL_STYLES.sectionHeader}>
                     Personligt mål
                   </Title>
@@ -816,6 +874,17 @@ export function Evaluation() {
 
                 {/* Socialt mål */}
                 <div>
+                  <Text size="sm" c="dimmed" mb={4}>
+                    Det sociale mål er et delmål til det følgende mål fra forløbsplanen:
+                  </Text>
+                  <Paper withBorder p="xs" mb="xs">
+                    <EditableField
+                      value={currentEvaluation.socialtForløbsplanDelmål || ''}
+                      onChange={(value) => updateEvaluationField('socialtForløbsplanDelmål', value)}
+                      minHeight={34}
+                      padding="4px 8px"
+                    />
+                  </Paper>
                   <Title order={5} mb={0} style={EVAL_STYLES.sectionHeader}>
                     Socialt mål
                   </Title>
@@ -861,6 +930,17 @@ export function Evaluation() {
 
                 {/* Arbejdsmæssigt mål */}
                 <div>
+                  <Text size="sm" c="dimmed" mb={4}>
+                    Det arbejdsmæssige mål er et delmål til det følgende mål fra forløbsplanen:
+                  </Text>
+                  <Paper withBorder p="xs" mb="xs">
+                    <EditableField
+                      value={currentEvaluation.arbejdsmæssigtForløbsplanDelmål || ''}
+                      onChange={(value) => updateEvaluationField('arbejdsmæssigtForløbsplanDelmål', value)}
+                      minHeight={34}
+                      padding="4px 8px"
+                    />
+                  </Paper>
                   <Title order={5} mb={0} style={EVAL_STYLES.sectionHeader}>
                     Arbejdsmæssigt mål
                   </Title>
@@ -956,6 +1036,86 @@ export function Evaluation() {
                     />
                   </Paper>
                 </div>
+
+                {/* Opfølgning og aftaler */}
+                {selectedStudentId && (
+                  <div>
+                    <Divider mb="md" />
+                    <Title order={5} mb="xs">Opfølgning og aftaler</Title>
+                    <Text size="xs" c="dimmed" mb="sm">
+                      Aftaler og opfølgninger følger eleven på tværs af alle modulperioder.
+                    </Text>
+
+                    {/* Ny aftale */}
+                    <Paper withBorder p="sm" mb="md" style={{ backgroundColor: 'light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-8))' }}>
+                      <Stack gap="xs">
+                        <Textarea
+                          placeholder="Skriv en ny aftale eller opfølgning..."
+                          value={newAftaleText}
+                          onChange={(e) => setNewAftaleText(e.currentTarget.value)}
+                          minRows={2}
+                          autosize
+                        />
+                        <Group justify="flex-end">
+                          <Button
+                            size="xs"
+                            leftSection={<IconPlus size={14} />}
+                            onClick={handleCreateAftale}
+                            loading={createAftale.isPending}
+                            disabled={!newAftaleText.trim()}
+                          >
+                            Tilføj aftale
+                          </Button>
+                        </Group>
+                      </Stack>
+                    </Paper>
+
+                    {/* Aftaler tabel */}
+                    {aftaleLoading ? (
+                      <Center><Loader size="sm" /></Center>
+                    ) : studentAftaler.length > 0 ? (
+                      <Table withTableBorder style={{ tableLayout: 'fixed' }}>
+                        <Table.Thead>
+                          <Table.Tr style={EVAL_STYLES.thRow}>
+                            <Table.Th style={{ ...EVAL_STYLES.th1, width: '110px' }}>Dato</Table.Th>
+                            <Table.Th style={{ ...EVAL_STYLES.th2, width: '70px' }}>Initialer</Table.Th>
+                            <Table.Th style={{ ...EVAL_STYLES.th3, width: '70px' }}>Aktiv</Table.Th>
+                            <Table.Th style={EVAL_STYLES.th4}>Tekst</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {studentAftaler.map((aftale, index) => {
+                            const d = new Date(aftale.dato)
+                            const dateStr = d.toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: '2-digit' })
+                            const rowBackground = index % 2 === 0
+                              ? 'transparent'
+                              : 'light-dark(rgba(0,0,0,0.03), rgba(255,255,255,0.05))'
+                            return (
+                              <Table.Tr key={aftale.id} style={{ opacity: aftale.aktiv ? 1 : 0.5 }}>
+                                <Table.Td style={{ width: '110px', fontSize: 13, backgroundColor: rowBackground, borderRight: '1px solid var(--mantine-color-default-border)' }}>{dateStr}</Table.Td>
+                                <Table.Td style={{ width: '70px', fontSize: 13, fontWeight: 600, backgroundColor: rowBackground, borderRight: '1px solid var(--mantine-color-default-border)' }}>{aftale.initialer}</Table.Td>
+                                <Table.Td style={{ width: '70px', verticalAlign: 'middle', backgroundColor: rowBackground, borderRight: '1px solid var(--mantine-color-default-border)' }}>
+                                  <Switch
+                                    checked={aftale.aktiv}
+                                    size="sm"
+                                    onChange={() => {
+                                      if (aftale.id && selectedStudentId) {
+                                        toggleAftale.mutate({ studentId: selectedStudentId, aftaleId: aftale.id })
+                                      }
+                                    }}
+                                  />
+                                </Table.Td>
+                                <Table.Td style={{ fontSize: 13, whiteSpace: 'pre-wrap', wordBreak: 'break-word', backgroundColor: rowBackground }}>{aftale.tekst}</Table.Td>
+                              </Table.Tr>
+                            )
+                          })}
+                        </Table.Tbody>
+                      </Table>
+                    ) : (
+                      <Text size="sm" c="dimmed" ta="center">Ingen aftaler registreret</Text>
+                    )}
+                  </div>
+                )}
               </Stack>
               ) : (
               <Stack gap="lg">
@@ -1147,8 +1307,7 @@ export function Evaluation() {
                             const year = date.getFullYear()
                             const hours = String(date.getHours()).padStart(2, '0')
                             const minutes = String(date.getMinutes()).padStart(2, '0')
-                            const seconds = String(date.getSeconds()).padStart(2, '0')
-                            return `${day}-${month}-${year} kl. ${hours}:${minutes}:${seconds}`
+                            return `${day}-${month}-${year} kl. ${hours}:${minutes}`
                           })() : evaluation.dato}
                         </Text>
                         <Text size="xs" c="dimmed">{evaluation.modulperiode}</Text>
@@ -1382,21 +1541,6 @@ export function Evaluation() {
         </Stack>
       </Modal>
 
-      {/* STU Modal */}
-      <Modal
-        opened={stuModalOpen}
-        onClose={() => setStuModalOpen(false)}
-        title="STU-indstilling"
-        centered
-      >
-        <Stack gap="md">
-          <Text>Denne funktionalitet er under udvikling og vil snart være tilgængelig.</Text>
-          <Text size="sm" c="dimmed">Du vil kunne oprette og administrere STU-indstillinger for eleven.</Text>
-          <Button fullWidth onClick={() => setStuModalOpen(false)}>
-            Luk
-          </Button>
-        </Stack>
-      </Modal>
     </>
   )
 }

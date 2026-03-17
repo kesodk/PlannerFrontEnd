@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { Evaluation } from '../types/Evaluation'
+import type { Evaluation, StudentAftale } from '../types/Evaluation'
 import { apiService, triggerBlobDownload } from './api'
 
 const EVALUATIONS_ENDPOINT = '/evaluations'
@@ -121,6 +121,67 @@ export function useExportEvaluation() {
     }) => {
       const { blob, filename } = await apiService.exportEvaluation(id, format, scope, studentName)
       triggerBlobDownload(blob, filename)
+    },
+  })
+}
+
+/**
+ * Get all aftaler for a student (on tværs af modulperioder)
+ */
+export function useStudentAftaler(studentId: number | null) {
+  return useQuery({
+    queryKey: ['student-aftaler', studentId],
+    queryFn: async () => {
+      const data = await apiService.getStudentAftaler(studentId!)
+      return data as StudentAftale[]
+    },
+    enabled: !!studentId,
+  })
+}
+
+/**
+ * Create a new aftale for a student
+ */
+export function useCreateStudentAftale() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      studentId,
+      initialer,
+      tekst,
+    }: {
+      studentId: number
+      initialer: string
+      tekst: string
+    }) => {
+      const dato = new Date().toISOString().split('T')[0]
+      const response: any = await apiService.createStudentAftale(studentId, { initialer, tekst, dato })
+      return (response.data || response) as StudentAftale
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['student-aftaler', variables.studentId] })
+    },
+  })
+}
+
+/**
+ * Toggle aktiv status on a student aftale
+ */
+export function useToggleStudentAftale() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      studentId,
+      aftaleId,
+    }: {
+      studentId: number
+      aftaleId: number
+    }) => {
+      const response: any = await apiService.toggleStudentAftale(studentId, aftaleId)
+      return (response.data || response) as StudentAftale
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['student-aftaler', variables.studentId] })
     },
   })
 }

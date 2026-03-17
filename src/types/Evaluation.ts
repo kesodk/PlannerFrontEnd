@@ -34,4 +34,21 @@ export interface Evaluation {
   bemærkninger?: string
   elevensEvaluering?: SummativeEvaluation
   lærerensEvaluering?: SummativeEvaluation
+  // Forløbsplan/STU-indstilling (pr. modulperiode)
+  forløbsplanMål?: string
+  fagligtForløbsplanDelmål?: string
+  personligtForløbsplanDelmål?: string
+  socialtForløbsplanDelmål?: string
+  arbejdsmæssigtForløbsplanDelmål?: string
+}
+
+export interface StudentAftale {
+  id?: number
+  studentId: number
+  dato: string
+  initialer: string
+  aktiv: boolean
+  tekst: string
+  createdAt?: string
+  updatedAt?: string
 }

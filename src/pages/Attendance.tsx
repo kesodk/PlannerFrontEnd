@@ -821,6 +821,11 @@ export function Attendance() {
                                 ? 'Fraværende'
                                 : `${fmtHM(...parseHM(rec!.modetid))}–${fmtHM(...parseHM(rec!.ga_tid))}`}
                             </Text>
+                            {rec!.bevilget_fravaer && (
+                              <Text size="10px" ta="center" c="blue" fw={600} lh={1.2}>
+                                Bevilget fravær
+                              </Text>
+                            )}
                           </>
                         )}
 

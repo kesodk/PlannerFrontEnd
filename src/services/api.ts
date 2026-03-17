@@ -266,6 +266,13 @@ class ApiService {
 
       // Special mapping: evalueringSenesteMål -> evaluering_seneste_mål
       if (key === 'evalueringSenesteMål') { snakeCaseObj['evaluering_seneste_mål'] = value; continue }
+
+      // Special mapping: forløbsplan fields
+      if (key === 'forløbsplanMål') { snakeCaseObj['forløbsplan_mål'] = value; continue }
+      if (key === 'fagligtForløbsplanDelmål') { snakeCaseObj['fagligt_forløbsplan_delmål'] = value; continue }
+      if (key === 'personligtForløbsplanDelmål') { snakeCaseObj['personligt_forløbsplan_delmål'] = value; continue }
+      if (key === 'socialtForløbsplanDelmål') { snakeCaseObj['socialt_forløbsplan_delmål'] = value; continue }
+      if (key === 'arbejdsmæssigtForløbsplanDelmål') { snakeCaseObj['arbejdsmæssigt_forløbsplan_delmål'] = value; continue }
       
       // Flatten nested goal objects: fagligtMål.individueleMål -> fagligt_individuelle_mål
       if (goalTypes.includes(key) && typeof value === 'object' && value !== null) {
@@ -449,6 +456,28 @@ class ApiService {
   logout(): void {
     this.token = null
     localStorage.removeItem(TOKEN_KEY)
+  }
+
+  /**
+   * === STUDENT AFTALER ===
+   */
+
+  async getStudentAftaler(studentId: number): Promise<any[]> {
+    const response: any = await this.authenticatedFetch<any>(`/students/${studentId}/aftaler`)
+    return Array.isArray(response) ? response : (response.data || [])
+  }
+
+  async createStudentAftale(studentId: number, data: { initialer: string; tekst: string; dato?: string }): Promise<any> {
+    return this.authenticatedFetch<any>(`/students/${studentId}/aftaler`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async toggleStudentAftale(studentId: number, aftaleId: number): Promise<any> {
+    return this.authenticatedFetch<any>(`/students/${studentId}/aftaler/${aftaleId}/toggle`, {
+      method: 'PATCH',
+    })
   }
 
   /**
