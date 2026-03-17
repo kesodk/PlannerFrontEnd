@@ -1,4 +1,4 @@
-import { Modal, Stack, Grid, Title, Card, Text, Badge, Group } from '@mantine/core'
+import { Modal, Stack, Grid, Title, Card, Text, Badge, Group, Divider } from '@mantine/core'
 import { IconMapPin, IconMail, IconPhone, IconCalendar, IconUser, IconSchool } from '@tabler/icons-react'
 import type { Student } from '../types/Student'
 import { formatDate } from '../utils/dateUtils'
@@ -206,7 +206,7 @@ export function StudentViewModal({ opened, onClose, student }: StudentViewModalP
         </Card>
 
         {/* Vejlederoplysninger */}
-        {(student.vejlederNavn || student.vejlederTlf || student.vejlederEmail) && (
+        {(student.vejlederNavn || student.vejlederTlf || student.vejlederEmail || student.kontaktperson1Navn || student.kontaktperson2Navn) && (
           <Card withBorder>
             <Title order={4} mb="md">
               <Group gap="xs">
@@ -235,6 +235,24 @@ export function StudentViewModal({ opened, onClose, student }: StudentViewModalP
                   <IconMail size={16} />
                   <Text>{student.vejlederEmail || '-'}</Text>
                 </Group>
+              </Grid.Col>
+
+              <Grid.Col span={12}>
+                <Divider label="Kontaktpersoner" labelPosition="left" />
+              </Grid.Col>
+
+              <Grid.Col span={6}>
+                <Text size="sm" c="dimmed">Kontaktperson 1</Text>
+                <Text>{student.kontaktperson1Rolle || '-'}: {student.kontaktperson1Navn || '-'}</Text>
+                <Text size="sm">Tlf: {student.kontaktperson1Telefon || '-'}</Text>
+                <Text size="sm">Email: {student.kontaktperson1Email || '-'}</Text>
+              </Grid.Col>
+
+              <Grid.Col span={6}>
+                <Text size="sm" c="dimmed">Kontaktperson 2</Text>
+                <Text>{student.kontaktperson2Rolle || '-'}: {student.kontaktperson2Navn || '-'}</Text>
+                <Text size="sm">Tlf: {student.kontaktperson2Telefon || '-'}</Text>
+                <Text size="sm">Email: {student.kontaktperson2Email || '-'}</Text>
               </Grid.Col>
             </Grid>
           </Card>

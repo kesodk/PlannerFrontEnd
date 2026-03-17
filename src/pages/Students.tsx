@@ -95,7 +95,17 @@ export function Students() {
       // Vejlederoplysninger
       (student.vejlederNavn?.toLowerCase() || '').includes(searchLower) ||
       (student.vejlederTlf?.toLowerCase() || '').includes(searchLower) ||
-      (student.vejlederEmail?.toLowerCase() || '').includes(searchLower)
+      (student.vejlederEmail?.toLowerCase() || '').includes(searchLower) ||
+
+      // Kontaktpersoner
+      (student.kontaktperson1Rolle?.toLowerCase() || '').includes(searchLower) ||
+      (student.kontaktperson1Navn?.toLowerCase() || '').includes(searchLower) ||
+      (student.kontaktperson1Telefon?.toLowerCase() || '').includes(searchLower) ||
+      (student.kontaktperson1Email?.toLowerCase() || '').includes(searchLower) ||
+      (student.kontaktperson2Rolle?.toLowerCase() || '').includes(searchLower) ||
+      (student.kontaktperson2Navn?.toLowerCase() || '').includes(searchLower) ||
+      (student.kontaktperson2Telefon?.toLowerCase() || '').includes(searchLower) ||
+      (student.kontaktperson2Email?.toLowerCase() || '').includes(searchLower)
     )
   })
 

@@ -21,6 +21,14 @@ export interface Student {
   vejlederNavn?: string
   vejlederTlf?: string
   vejlederEmail?: string
+  kontaktperson1Rolle?: string
+  kontaktperson1Navn?: string
+  kontaktperson1Telefon?: string
+  kontaktperson1Email?: string
+  kontaktperson2Rolle?: string
+  kontaktperson2Navn?: string
+  kontaktperson2Telefon?: string
+  kontaktperson2Email?: string
   startdato: string
   slutdato?: string
   spor: 'AspIT' | 'AspIN'

@@ -83,7 +83,7 @@ function validate(values: TeacherFormValues, isEditing: boolean) {
   return errors
 }
 
-type SortField = 'navn' | 'afdeling'
+type SortField = 'navn' | 'afdeling' | 'rolle' | 'status'
 
 export function Teachers() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -202,6 +202,12 @@ export function Teachers() {
       if (sortBy === 'afdeling') {
         aVal = [...a.afdelinger].sort().join(', ')
         bVal = [...b.afdelinger].sort().join(', ')
+      } else if (sortBy === 'rolle') {
+        aVal = a.rolle ?? ''
+        bVal = b.rolle ?? ''
+      } else if (sortBy === 'status') {
+        aVal = a.aktiv ? 'Aktiv' : 'Inaktiv'
+        bVal = b.aktiv ? 'Aktiv' : 'Inaktiv'
       } else {
         aVal = a.navn
         bVal = b.navn
@@ -326,13 +332,21 @@ export function Teachers() {
               <Table.Th>Initialer</Table.Th>
               <Table.Th>Email</Table.Th>
               <Table.Th>Telefon</Table.Th>
-              <Table.Th>Rolle</Table.Th>
+              <Table.Th>
+                <UnstyledButton onClick={() => handleSort('rolle')} style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                  Rolle <SortIcon field="rolle" />
+                </UnstyledButton>
+              </Table.Th>
               <Table.Th>
                 <UnstyledButton onClick={() => handleSort('afdeling')} style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
                   Afdeling(er) <SortIcon field="afdeling" />
                 </UnstyledButton>
               </Table.Th>
-              <Table.Th>Status</Table.Th>
+              <Table.Th>
+                <UnstyledButton onClick={() => handleSort('status')} style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                  Status <SortIcon field="status" />
+                </UnstyledButton>
+              </Table.Th>
               <Table.Th>Handlinger</Table.Th>
             </Table.Tr>
           </Table.Thead>

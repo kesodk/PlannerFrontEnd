@@ -12,7 +12,9 @@ import {
   Title,
   Divider,
   Card,
+  Alert,
 } from '@mantine/core'
+import { IconAlertCircle } from '@tabler/icons-react'
 import { studentSchema, type StudentFormData } from '../schemas/studentSchema'
 import { AFDELINGER, SPOR, LOVGRUNDLAG, STATUS, KOMMUNER } from '../types/Student'
 import type { Student } from '../types/Student'
@@ -53,6 +55,14 @@ export function StudentForm({ opened, onClose, onSubmit, student, title }: Stude
       vejlederNavn: '',
       vejlederTlf: '',
       vejlederEmail: '',
+      kontaktperson1Rolle: '',
+      kontaktperson1Navn: '',
+      kontaktperson1Telefon: '',
+      kontaktperson1Email: '',
+      kontaktperson2Rolle: '',
+      kontaktperson2Navn: '',
+      kontaktperson2Telefon: '',
+      kontaktperson2Email: '',
       startdato: '',
       slutdato: '',
       spor: 'AspIT',
@@ -81,6 +91,14 @@ export function StudentForm({ opened, onClose, onSubmit, student, title }: Stude
       setValue('vejlederNavn', student.vejlederNavn || '')
       setValue('vejlederTlf', student.vejlederTlf || '')
       setValue('vejlederEmail', student.vejlederEmail || '')
+      setValue('kontaktperson1Rolle', student.kontaktperson1Rolle || '')
+      setValue('kontaktperson1Navn', student.kontaktperson1Navn || '')
+      setValue('kontaktperson1Telefon', student.kontaktperson1Telefon || '')
+      setValue('kontaktperson1Email', student.kontaktperson1Email || '')
+      setValue('kontaktperson2Rolle', student.kontaktperson2Rolle || '')
+      setValue('kontaktperson2Navn', student.kontaktperson2Navn || '')
+      setValue('kontaktperson2Telefon', student.kontaktperson2Telefon || '')
+      setValue('kontaktperson2Email', student.kontaktperson2Email || '')
       setValue('startdato', student.startdato || '')
       setValue('slutdato', student.slutdato || '')
       setValue('spor', student.spor || 'AspIT')
@@ -105,6 +123,14 @@ export function StudentForm({ opened, onClose, onSubmit, student, title }: Stude
         vejlederNavn: '',
         vejlederTlf: '',
         vejlederEmail: '',
+        kontaktperson1Rolle: '',
+        kontaktperson1Navn: '',
+        kontaktperson1Telefon: '',
+        kontaktperson1Email: '',
+        kontaktperson2Rolle: '',
+        kontaktperson2Navn: '',
+        kontaktperson2Telefon: '',
+        kontaktperson2Email: '',
         startdato: '',
         slutdato: '',
         spor: 'AspIT',
@@ -294,38 +320,6 @@ export function StudentForm({ opened, onClose, onSubmit, student, title }: Stude
                 />
               </Grid.Col>
               
-              <Grid.Col span={12}>
-                <Divider label="Vejlederoplysninger" labelPosition="left" />
-              </Grid.Col>
-              
-              <Grid.Col span={4}>
-                <TextInput
-                  label="Vejleder navn"
-                  placeholder="Vejleders navn"
-                  {...register('vejlederNavn')}
-                  error={errors.vejlederNavn?.message}
-                />
-              </Grid.Col>
-              
-              <Grid.Col span={4}>
-                <TextInput
-                  label="Vejleder telefon"
-                  placeholder="12345678"
-                  {...register('vejlederTlf')}
-                  error={errors.vejlederTlf?.message}
-                />
-              </Grid.Col>
-              
-              <Grid.Col span={4}>
-                <TextInput
-                  label="Vejleder email"
-                  placeholder="vejleder@example.com"
-                  type="email"
-                  {...register('vejlederEmail')}
-                  error={errors.vejlederEmail?.message}
-                />
-              </Grid.Col>
-              
               <Grid.Col span={6}>
                 <TextInput
                   label="Startdato"
@@ -366,6 +360,137 @@ export function StudentForm({ opened, onClose, onSubmit, student, title }: Stude
                   onChange={(value) => setValue('status', value as any)}
                   error={errors.status?.message}
                   required
+                />
+              </Grid.Col>
+            </Grid>
+          </Card>
+
+          {/* Kontaktpersoner */}
+          <Card withBorder>
+            <Title order={4} mb="md">Kontaktpersoner</Title>
+
+            <Grid>
+              <Grid.Col span={12}>
+                <Alert variant="light" color="yellow" icon={<IconAlertCircle size={16} />}>
+                  Brug kun  arbejdsoplysninger. Privat telefonnummer og privat email må ikke anvendes.
+                </Alert>
+              </Grid.Col>
+
+              <Grid.Col span={12}>
+                <Divider label="Vejlederoplysninger" labelPosition="left" />
+              </Grid.Col>
+
+              <Grid.Col span={4}>
+                <TextInput
+                  label="Vejleder navn"
+                  placeholder="Vejleders navn"
+                  {...register('vejlederNavn')}
+                  error={errors.vejlederNavn?.message}
+                />
+              </Grid.Col>
+
+              <Grid.Col span={4}>
+                <TextInput
+                  label="Vejleder telefon"
+                  placeholder="12345678"
+                  {...register('vejlederTlf')}
+                  error={errors.vejlederTlf?.message}
+                />
+              </Grid.Col>
+
+              <Grid.Col span={4}>
+                <TextInput
+                  label="Vejleder email"
+                  placeholder="vejleder@example.com"
+                  type="email"
+                  {...register('vejlederEmail')}
+                  error={errors.vejlederEmail?.message}
+                />
+              </Grid.Col>
+
+              <Grid.Col span={12}>
+                <Divider label="Kontaktpersoner" labelPosition="left" />
+              </Grid.Col>
+
+              <Grid.Col span={12}>
+                <Title order={6}>Kontaktperson 1</Title>
+              </Grid.Col>
+
+              <Grid.Col span={6}>
+                <TextInput
+                  label="Rolle"
+                  placeholder="F.eks. bostøtte eller sagsbehandler"
+                  {...register('kontaktperson1Rolle')}
+                  error={errors.kontaktperson1Rolle?.message}
+                />
+              </Grid.Col>
+
+              <Grid.Col span={6}>
+                <TextInput
+                  label="Navn"
+                  placeholder="Fulde navn"
+                  {...register('kontaktperson1Navn')}
+                  error={errors.kontaktperson1Navn?.message}
+                />
+              </Grid.Col>
+
+              <Grid.Col span={6}>
+                <TextInput
+                  label="Telefon"
+                  placeholder="12345678"
+                  {...register('kontaktperson1Telefon')}
+                  error={errors.kontaktperson1Telefon?.message}
+                />
+              </Grid.Col>
+
+              <Grid.Col span={6}>
+                <TextInput
+                  label="Email"
+                  placeholder="kontaktperson1@organisation.dk"
+                  type="email"
+                  {...register('kontaktperson1Email')}
+                  error={errors.kontaktperson1Email?.message}
+                />
+              </Grid.Col>
+
+              <Grid.Col span={12}>
+                <Title order={6}>Kontaktperson 2</Title>
+              </Grid.Col>
+
+              <Grid.Col span={6}>
+                <TextInput
+                  label="Rolle"
+                  placeholder="F.eks. bostøtte eller sagsbehandler"
+                  {...register('kontaktperson2Rolle')}
+                  error={errors.kontaktperson2Rolle?.message}
+                />
+              </Grid.Col>
+
+              <Grid.Col span={6}>
+                <TextInput
+                  label="Navn"
+                  placeholder="Fulde navn"
+                  {...register('kontaktperson2Navn')}
+                  error={errors.kontaktperson2Navn?.message}
+                />
+              </Grid.Col>
+
+              <Grid.Col span={6}>
+                <TextInput
+                  label="Telefon"
+                  placeholder="12345678"
+                  {...register('kontaktperson2Telefon')}
+                  error={errors.kontaktperson2Telefon?.message}
+                />
+              </Grid.Col>
+
+              <Grid.Col span={6}>
+                <TextInput
+                  label="Email"
+                  placeholder="kontaktperson2@organisation.dk"
+                  type="email"
+                  {...register('kontaktperson2Email')}
+                  error={errors.kontaktperson2Email?.message}
                 />
               </Grid.Col>
             </Grid>
