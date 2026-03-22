@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { triggerBlobDownload } from '../services/api'
 
 describe('triggerBlobDownload', () => {
-  let appendChildSpy: ReturnType<typeof vi.spyOn>
-  let removeChildSpy: ReturnType<typeof vi.spyOn>
-  let clickSpy: ReturnType<typeof vi.fn>
+  let appendChildSpy: any
+  let removeChildSpy: any
+  let clickSpy: any
 
   beforeEach(() => {
     // jsdom doesn't implement URL.createObjectURL / revokeObjectURL – mock them

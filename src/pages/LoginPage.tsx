@@ -8,15 +8,14 @@ import {
   PasswordInput,
   Button,
   Stack,
-  Divider,
   Alert,
   Box,
 } from '@mantine/core'
-import { IconChalkboard, IconAlertCircle, IconUser } from '@tabler/icons-react'
+import { IconChalkboard, IconAlertCircle } from '@tabler/icons-react'
 import { useAuth } from '../contexts/AuthContext'
 
 export function LoginPage() {
-  const { login, loginAsGuest, isLoading } = useAuth()
+  const { login, isLoading } = useAuth()
   const [initialer, setInitialer] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -49,7 +48,7 @@ export function LoginPage() {
             <Stack gap="md">
               <TextInput
                 label="Initialer"
-                placeholder="F.eks. KESO"
+                placeholder="Dine initialer"
                 value={initialer}
                 onChange={(e) => setInitialer(e.currentTarget.value.toUpperCase())}
                 maxLength={5}
@@ -77,23 +76,6 @@ export function LoginPage() {
               </Button>
             </Stack>
           </form>
-
-          <Divider label="eller" labelPosition="center" my="lg" />
-
-          <Stack gap="xs">
-            <Button
-              variant="light"
-              color="gray"
-              fullWidth
-              leftSection={<IconUser size={16} />}
-              onClick={loginAsGuest}
-            >
-              Fortsæt som gæst
-            </Button>
-            <Text size="xs" c="dimmed" ta="center">
-              Gæsteadgang er kun til testformål og vil blive fjernet senere
-            </Text>
-          </Stack>
         </Paper>
 
 

@@ -27,7 +27,6 @@ import {
   IconPlus,
   IconSearch,
   IconEdit,
-  IconTrash,
   IconRefresh,
   IconChalkboard,
   IconAlertCircle,
@@ -35,9 +34,8 @@ import {
   IconChevronDown,
   IconSelector,
 } from '@tabler/icons-react'
-import { modals } from '@mantine/modals'
 import { useForm } from '@mantine/form'
-import { useTeachers, useCreateTeacher, useUpdateTeacher, useDeleteTeacher } from '../services/teacherApi'
+import { useTeachers, useCreateTeacher, useUpdateTeacher } from '../services/teacherApi'
 import type { Teacher, Department, TeacherPayload } from '../types/Teacher'
 
 const DEPARTMENTS: Department[] = ['Trekanten', 'Østjylland', 'Sønderjylland', 'Storkøbenhavn']
@@ -110,7 +108,6 @@ export function Teachers() {
   const { data: teachers = [], isLoading, isError, refetch } = useTeachers()
   const createTeacher = useCreateTeacher()
   const updateTeacher = useUpdateTeacher()
-  const deleteTeacher = useDeleteTeacher()
 
   const form = useForm<TeacherFormValues>({
     initialValues: {
@@ -168,20 +165,6 @@ export function Teachers() {
         onSuccess: () => setModalOpened(false),
       })
     }
-  }
-
-  const handleDelete = (teacher: Teacher) => {
-    modals.openConfirmModal({
-      title: 'Slet underviser',
-      children: (
-        <Text size="sm">
-          Er du sikker på, at du vil slette <strong>{teacher.navn}</strong>? Denne handling kan ikke fortrydes.
-        </Text>
-      ),
-      labels: { confirm: 'Slet', cancel: 'Annuller' },
-      confirmProps: { color: 'red' },
-      onConfirm: () => deleteTeacher.mutate(teacher.id),
-    })
   }
 
   const filtered = teachers
@@ -247,18 +230,17 @@ export function Teachers() {
         </Badge>
       </Table.Td>
       <Table.Td>
-        <Group gap={4} wrap="nowrap">
-          <Tooltip label="Rediger">
-            <ActionIcon variant="subtle" color="blue" onClick={() => openEditModal(teacher)}>
-              <IconEdit size={16} />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="Slet">
-            <ActionIcon variant="subtle" color="red" onClick={() => handleDelete(teacher)}>
-              <IconTrash size={16} />
-            </ActionIcon>
-          </Tooltip>
-        </Group>
+        {(teacher.navn === 'Kenneth Sørensen' || teacher.initialer === 'KESO') ? (
+          <Text size="sm" fw={600} c="dimmed" tt="uppercase">admin</Text>
+        ) : (
+          <Group gap={4} wrap="nowrap">
+            <Tooltip label="Rediger">
+              <ActionIcon variant="subtle" color="blue" onClick={() => openEditModal(teacher)}>
+                <IconEdit size={16} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        )}
       </Table.Td>
     </Table.Tr>
   ))

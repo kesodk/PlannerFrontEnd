@@ -401,21 +401,74 @@ class ApiService {
     id: number,
     format: 'pdf' | 'docx' | 'txt',
     scope: 'formativ' | 'summativ' | 'both' = 'formativ',
-    studentName?: string
+    studentName?: string,
+    exportData?: {
+      evaluation?: any
+      studentAftaler?: Array<{
+        id?: number
+        studentId?: number
+        dato?: string
+        initialer?: string
+        aktiv?: boolean
+        tekst?: string
+      }>
+      student?: {
+        id?: number
+        navn?: string
+      }
+      classInfo?: {
+        id?: number
+        modulperiode?: string
+      }
+    }
   ): Promise<{ blob: Blob; filename: string }> {
     const nameSlug = studentName ? studentName.trim().replace(/\s+/g, '-') + '-' : ''
     const token = await this.ensureAuthenticated()
+    const requestBody: Record<string, any> = { format, scope }
+
+    if (exportData) {
+      requestBody.export_context = {
+        evaluation: exportData.evaluation ? this.toSnakeCase(exportData.evaluation) : undefined,
+        student_aftaler: exportData.studentAftaler?.map((aftale) => ({
+          id: aftale.id,
+          student_id: aftale.studentId,
+          dato: aftale.dato,
+          initialer: aftale.initialer,
+          aktiv: aftale.aktiv,
+          tekst: aftale.tekst,
+        })),
+        student: exportData.student
+          ? {
+              id: exportData.student.id,
+              navn: exportData.student.navn,
+            }
+          : undefined,
+        class_info: exportData.classInfo
+          ? {
+              id: exportData.classInfo.id,
+              modulperiode: exportData.classInfo.modulperiode,
+            }
+          : undefined,
+      }
+    }
+
+    const acceptHeader =
+      format === 'pdf'
+        ? 'application/pdf'
+        : format === 'docx'
+          ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          : 'text/plain'
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Accept': format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'Accept': acceptHeader,
     }
     if (token) headers['Authorization'] = `Bearer ${token}`
 
     const response = await fetch(`${API_BASE_URL}/evaluations/${id}/export`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ format, scope }),
+      body: JSON.stringify(requestBody),
     })
 
     if (response.status === 401 && !isMockMode()) {
@@ -427,9 +480,10 @@ class ApiService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': acceptHeader,
           'Authorization': `Bearer ${newToken}`,
         },
-        body: JSON.stringify({ format, scope }),
+        body: JSON.stringify(requestBody),
       })
       if (!retryResponse.ok) {
         const text = await retryResponse.text()

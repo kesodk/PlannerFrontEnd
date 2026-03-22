@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { API_CONFIG, getApiBaseUrl } from '../config/apiConfig'
+import { getApiBaseUrl } from '../config/apiConfig'
 
 const API_BASE_URL = getApiBaseUrl()
 const TOKEN_KEY = 'auth_token'
@@ -16,6 +16,23 @@ export interface ClassData {
   status: 'Igangværende' | 'Fremtidig' | 'Afsluttet'
   students?: any[]
   teacher?: any
+}
+
+export interface CreateClassInput {
+  navn: string
+  afdeling: string
+  lærer: string
+  fag: string
+  modulperiode: string
+}
+
+export interface UpdateClassInput {
+  id: number
+  navn: string
+  afdeling: string
+  lærer: string
+  fag: string
+  modulperiode: string
 }
 
 // Query keys
@@ -95,7 +112,7 @@ export function useCreateClass() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (classData: Omit<ClassData, 'id'>) => {
+    mutationFn: async (classData: CreateClassInput) => {
       return await authenticatedFetch<ClassData>('/classes', {
         method: 'POST',
         body: JSON.stringify(classData),
@@ -114,7 +131,7 @@ export function useUpdateClass() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (classData: ClassData) => {
+    mutationFn: async (classData: UpdateClassInput) => {
       return await authenticatedFetch<ClassData>(`/classes/${classData.id}`, {
         method: 'PUT',
         body: JSON.stringify(classData),

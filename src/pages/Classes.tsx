@@ -26,30 +26,32 @@ import {
   useDeleteClass, 
   useEnrollStudent, 
   useUnenrollStudent,
-  type ClassData 
+  type CreateClassInput,
+  type UpdateClassInput
 } from '../services/classApi'
 import { availableFag } from '../data/mockClasses'
 import { useTeachers } from '../services/teacherApi'
 import { formatDate } from '../utils/dateUtils'
 import { useModulperioder } from '../services/modulperiodeApi'
-
-// Dato-safe sammenligning der ignorerer klokkeslæt (undgår timezone-problemer)
-function toDateOnly(date: Date): number {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
-}
-
-function classStatus(startdato: string, slutdato: string): 'Fremtidig' | 'Igangværende' | 'Afsluttet' {
-  const today = toDateOnly(new Date())
-  const start = toDateOnly(new Date(startdato))
-  const end = toDateOnly(new Date(slutdato))
-  if (start > today) return 'Fremtidig'
-  if (end < today) return 'Afsluttet'
-  return 'Igangværende'
-}
+import { calculateSemester } from '../services/oversigterApi'
 
 // Generer holdnavn: modulperiode-fag-lærer
 function generateClassName(modulperiode: string, fag: string, lærer: string): string {
   return `${modulperiode}-${fag}-${lærer}`
+}
+
+// Get color for semester badge
+function getSemesterColor(semester: number): string {
+  switch (semester) {
+    case 1:
+      return 'blue'
+    case 2:
+      return 'teal'
+    case 3:
+      return 'violet'
+    default:
+      return 'orange'
+  }
 }
 
 export function Classes() {
@@ -57,6 +59,7 @@ export function Classes() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('Igangværende')
   const [afdelingFilter, setAfdelingFilter] = useState<string | null>(null)
+  const [selectedStudentAfdeling, setSelectedStudentAfdeling] = useState<string | null>(null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
 
   const { data: teachers = [] } = useTeachers()
@@ -111,15 +114,17 @@ export function Classes() {
   // Get students in selected class
   const studentsInClass = selectedClass?.students || []
 
-  // Get students not in any class for the selected modulperiode
-  const studentsWithoutClass = selectedClass
+  // Get students not in any class for the selected modulperiode and afdeling
+  const studentsWithoutClass = selectedClass && selectedStudentAfdeling
     ? students.filter(s => {
+        // Check if student is from the selected afdeling
+        const isFromAfdeling = s.afdeling === selectedStudentAfdeling
         // Check if student is already in a class for this modulperiode
         const isInAnyClass = classes.some(cls => 
           cls.modulperiode === selectedClass.modulperiode && 
           cls.students?.some(student => student.id === s.id)
         )
-        return !isInAnyClass
+        return isFromAfdeling && !isInAnyClass
       })
     : []
 
@@ -127,6 +132,14 @@ export function Classes() {
     value: a,
     label: a
   }))
+
+  // Department colors matching Teachers.tsx
+  const departmentColors: Record<string, string> = {
+    'Trekanten': 'blue',
+    'Østjylland': 'teal',
+    'Sønderjylland': 'orange',
+    'Storkøbenhavn': 'violet'
+  }
 
   const handleAddStudentToClass = async (studentId: number) => {
     if (!selectedClass) return
@@ -177,15 +190,11 @@ export function Classes() {
       return
     }
     
-    const { startdato, slutdato } = mpData
     const navn = generateClassName(classForm.modulperiode, classForm.fag, classForm.lærer)
     
-    const newClassData: Omit<ClassData, 'id'> = {
+    const newClassData: CreateClassInput = {
       navn,
       ...classForm,
-      startdato,
-      slutdato,
-      status: classStatus(startdato, slutdato)
     }
     
     try {
@@ -207,18 +216,12 @@ export function Classes() {
   const handleEditClass = async () => {
     if (!selectedClass) return
     
-    const mpData = apiModulperioder.find(m => m.kode === classForm.modulperiode)
-    const startdato = mpData?.startdato ?? selectedClass.startdato
-    const slutdato = mpData?.slutdato ?? selectedClass.slutdato
     const navn = generateClassName(classForm.modulperiode, classForm.fag, classForm.lærer)
     
-    const updatedClass: ClassData = {
-      ...selectedClass,
+    const updatedClass: UpdateClassInput = {
+      id: selectedClass.id,
       navn,
       ...classForm,
-      startdato,
-      slutdato,
-      status: classStatus(startdato, slutdato)
     }
     
     try {
@@ -402,30 +405,57 @@ export function Classes() {
                     <Title order={5} mb="sm">
                       Elever uden hold i {selectedClass.modulperiode}
                     </Title>
+                    <Select
+                      placeholder="Vælg afdeling..."
+                      data={afdelinger}
+                      value={selectedStudentAfdeling}
+                      onChange={setSelectedStudentAfdeling}
+                      mb="md"
+                      clearable
+                      searchable
+                    />
+                    <Text size="xs" c="dimmed" mb="sm">
+                      Tryk på blå pil for at overføre elev til holdet.
+                    </Text>
                     {selectedClass.status === 'Afsluttet' && (
                       <Alert color="gray" variant="light" mb="sm">
                         Dette hold er afsluttet. Elever kan ikke tilføjes.
                       </Alert>
                     )}
-                    <ScrollArea style={{ height: 400 }}>
+                    <ScrollArea style={{ height: 400 }} offsetScrollbars="present">
                       <Stack gap="xs">
-                        {studentsWithoutClass.map(student => (
-                          <Group key={student.id} justify="space-between">
-                            <Text size="sm" c={selectedClass.status === 'Afsluttet' ? 'dimmed' : undefined}>
-                              {student.navn}
-                            </Text>
+                        {studentsWithoutClass.map(student => {
+                          const semester = calculateSemester(student.startdato)
+                          return (
+                          <Group key={student.id} justify="space-between" align="center" gap="sm">
                             <ActionIcon
                               variant="subtle"
                               color="blue"
                               onClick={() => handleAddStudentToClass(student.id)}
                               title={selectedClass.status === 'Afsluttet' ? 'Holdet er afsluttet' : 'Tilføj til hold'}
                               disabled={selectedClass.status === 'Afsluttet'}
-                              style={{ cursor: selectedClass.status === 'Afsluttet' ? 'not-allowed' : 'pointer' }}
+                              style={{
+                                cursor: selectedClass.status === 'Afsluttet' ? 'not-allowed' : 'pointer'
+                              }}
                             >
                               <IconArrowRight size={16} />
                             </ActionIcon>
+                              <Stack gap="4px" style={{ flex: 1 }}>
+                                <Group gap="6px">
+                                  <Text size="sm" c={selectedClass.status === 'Afsluttet' ? 'dimmed' : undefined} fw={500}>
+                                    {student.navn}
+                                  </Text>
+                                  <Badge size="xs" variant="filled" color={getSemesterColor(semester)}>
+                                    {semester}. sem.
+                                  </Badge>
+                                </Group>
+                                <Badge size="xs" variant="light" color={departmentColors[student.afdeling] ?? 'gray'}>
+                                  {student.afdeling}
+                                </Badge>
+                              </Stack>
                           </Group>
-                        ))}
+                          )
+                        })}
                         {studentsWithoutClass.length === 0 && (
                           <Text size="sm" c="dimmed" ta="center">
                             Ingen elever uden hold
@@ -449,15 +479,20 @@ export function Classes() {
                     <Title order={5} mb="sm">
                       Elever på holdet ({studentsInClass.length})
                     </Title>
+                    <Text size="xs" c="dimmed" mb="sm">
+                      Tryk på rød pil for at fjerne elev fra holdet.
+                    </Text>
                     {selectedClass.status === 'Afsluttet' && (
                       <Alert color="gray" variant="light" mb="sm">
                         Dette hold er afsluttet. Elever kan ikke fjernes.
                       </Alert>
                     )}
-                    <ScrollArea style={{ height: 400 }}>
+                    <ScrollArea style={{ height: 400 }} offsetScrollbars="present">
                       <Stack gap="xs">
-                        {studentsInClass.map(student => (
-                          <Group key={student.id} justify="space-between">
+                        {studentsInClass.map(student => {
+                          const semester = calculateSemester(student.startdato)
+                          return (
+                          <Group key={student.id} justify="space-between" align="center" gap="sm">
                             <ActionIcon
                               variant="subtle"
                               color="red"
@@ -468,11 +503,22 @@ export function Classes() {
                             >
                               <IconArrowLeft size={16} />
                             </ActionIcon>
-                            <Text size="sm" c={selectedClass.status === 'Afsluttet' ? 'dimmed' : undefined}>
-                              {student.navn}
-                            </Text>
+                              <Stack gap="4px" style={{ flex: 1 }}>
+                                <Group gap="6px">
+                                  <Text size="sm" c={selectedClass.status === 'Afsluttet' ? 'dimmed' : undefined} fw={500}>
+                                    {student.navn}
+                                  </Text>
+                                  <Badge size="xs" variant="filled" color={getSemesterColor(semester)}>
+                                    {semester}. sem.
+                                  </Badge>
+                                </Group>
+                                <Badge size="xs" variant="light" color={departmentColors[student.afdeling] ?? 'gray'}>
+                                  {student.afdeling}
+                                </Badge>
+                              </Stack>
                           </Group>
-                        ))}
+                          )
+                        })}
                         {studentsInClass.length === 0 && (
                           <Text size="sm" c="dimmed" ta="center">
                             Ingen elever på holdet

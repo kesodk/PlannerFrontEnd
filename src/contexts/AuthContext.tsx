@@ -15,7 +15,6 @@ interface AuthContextType {
   user: AuthUser | null
   isLoading: boolean
   login: (initialer: string, password: string) => Promise<void>
-  loginAsGuest: () => void
   logout: () => void
 }
 
@@ -27,7 +26,15 @@ const TOKEN_KEY = 'auth_token'
 function loadStoredUser(): AuthUser | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : null
+    if (!raw) return null
+
+    const parsed = JSON.parse(raw) as AuthUser
+    if (parsed.isGuest) {
+      localStorage.removeItem(STORAGE_KEY)
+      return null
+    }
+
+    return parsed
   } catch {
     return null
   }
@@ -98,24 +105,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const loginAsGuest = () => {
-    ensureSanctumToken()
-    persist({
-      id:         0,
-      initialer:  'GÆST',
-      navn:       'Gæst',
-      afdelinger: [],
-      isGuest:    true,
-    })
-  }
-
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY)
     persist(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, loginAsGuest, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

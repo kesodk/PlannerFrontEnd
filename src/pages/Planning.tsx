@@ -1,23 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
 import {
-  Group, Stack, Text, Box, Button, Modal, TextInput, Badge,
+  Group, Stack, Text, Box, Button, Badge,
   ActionIcon, Tabs, ScrollArea, Divider, Paper,
-  Tooltip, Loader, Center, ThemeIcon, UnstyledButton,
+  Tooltip, Center, ThemeIcon, UnstyledButton,
 } from '@mantine/core'
-import { useDisclosure } from '@mantine/hooks'
 import {
   IconSearch, IconChevronLeft, IconChevronRight, IconDeviceFloppy,
-  IconPlus, IconCopy, IconChalkboard, IconUsers, IconArrowRight,
+  IconPlus, IconCopy, IconUsers, IconArrowRight,
   IconArrowLeft, IconTrash, IconBook,
   IconBold, IconItalic, IconUnderline, IconStrikethrough, IconList, IconListNumbers, IconClearFormatting, IconLink,
 } from '@tabler/icons-react'
-import { useAuth } from '../contexts/AuthContext'
-import { useClasses } from '../services/classApi'
+import { useClass } from '../services/classApi'
 import {
-  usePinnedClasses, usePinClass, useUnpinClass,
   useUgeplaner, useKladder, useCreateUgeplan, useUpdateUgeplan, useDeleteUgeplan, useSyncStudents,
 } from '../services/planningApi'
-import type { Ugeplan, UgeplanDag, PinnedClass, PlanningStudent } from '../services/planningApi'
+import type { Ugeplan, UgeplanDag, PlanningStudent } from '../services/planningApi'
+import { FollowedClassStudentSidebar } from '../components/FollowedClassStudentSidebar'
 
 // ─── ISO Week Utilities ───────────────────────────────────────────────────────
 
@@ -184,64 +182,6 @@ function EditableField({ value, onChange }: { value: string; onChange: (value: s
   )
 }
 
-// ─── ClassCard ────────────────────────────────────────────────────────────────
-
-function ClassCard({
-  klass, selected, onSelect, onUnpin,
-}: {
-  klass: PinnedClass
-  selected: boolean
-  onSelect: () => void
-  onUnpin: () => void
-}) {
-  const fagUpper = klass.fag.toUpperCase()
-  const fagColor = fagUpper.startsWith('V') ? 'teal'
-    : fagUpper.startsWith('UP') ? 'violet'
-    : fagUpper.startsWith('LAB') ? 'cyan'
-    : 'blue'
-
-  const startWeek = klass.startdato ? getISOWeekYear(new Date(klass.startdato)).week : null
-  const slutWeek = klass.slutdato ? getISOWeekYear(new Date(klass.slutdato)).week : null
-
-  return (
-    <UnstyledButton w="100%" onClick={onSelect}>
-      <Box
-        p="xs"
-        style={(theme) => ({
-          borderRadius: theme.radius.sm,
-          border: `1px solid ${selected ? theme.colors.blue[6] : theme.colors.gray[3]}`,
-          backgroundColor: selected ? 'var(--mantine-color-blue-light)' : 'var(--mantine-color-body)',
-          cursor: 'pointer',
-          transition: 'all 0.15s',
-        })}
-      >
-        <Group justify="space-between" gap="xs" wrap="nowrap">
-          <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
-            <Badge color={fagColor} size="md" radius="xs" style={{ flexShrink: 0 }}>
-              {klass.fag.substring(0, 4)}
-            </Badge>
-            <Stack gap={0} style={{ minWidth: 0 }}>
-              <Text fw={600} size="sm" truncate>{klass.laerer}</Text>
-              <Text size="xs" c="dimmed">{klass.modulperiode} · {klass.studenter.length} elever</Text>
-              {startWeek !== null && slutWeek !== null && (
-                <Text size="xs" c="dimmed">uge {startWeek} → uge {slutWeek}</Text>
-              )}
-            </Stack>
-          </Group>
-          <Tooltip label="Fjern hold" withArrow>
-            <ActionIcon
-              size="xs" variant="subtle" color="red"
-              onClick={(e) => { e.stopPropagation(); onUnpin() }}
-            >
-              <IconTrash size={12} />
-            </ActionIcon>
-          </Tooltip>
-        </Group>
-      </Box>
-    </UnstyledButton>
-  )
-}
-
 // ─── StudentRow ───────────────────────────────────────────────────────────────
 
 function StudentRow({ student, onClick, active }: {
@@ -310,7 +250,6 @@ function UgeplanCard({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function Planning() {
-  const { user } = useAuth()
   const today = getISOWeekYear(new Date())
 
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null)
@@ -320,24 +259,30 @@ export function Planning() {
   const [year, setYear] = useState(today.year)
   const [editedDage, setEditedDage] = useState<UgeplanDag[]>(EMPTY_DAGE)
   const [isDirty, setIsDirty] = useState(false)
-  const [classSearch, setClassSearch] = useState('')
   const [selectedLeft, setSelectedLeft] = useState<number | null>(null)
   const [selectedRight, setSelectedRight] = useState<number | null>(null)
-  const [findHoldOpened, { open: openFindHold, close: closeFindHold }] = useDisclosure(false)
+  const openFindHoldRef = useRef<(() => void) | null>(null)
 
-  const { data: pinnedClasses = [], isLoading: loadingPinned } = usePinnedClasses(user?.id)
-  const { data: allClasses = [], isLoading: loadingAll } = useClasses()
+  const { data: classDetail, isLoading: classLoading } = useClass(selectedClassId ?? 0)
   const { data: ugeplaner = [] } = useUgeplaner(selectedClassId, week, year)
   const { data: kladder = [] } = useKladder(selectedClassId)
 
-  const pinMutation = usePinClass()
-  const unpinMutation = useUnpinClass()
   const createUgeplan = useCreateUgeplan()
   const updateUgeplan = useUpdateUgeplan()
   const deleteUgeplan = useDeleteUgeplan()
   const syncStudents = useSyncStudents()
 
-  const selectedClass = pinnedClasses.find(c => c.id === selectedClassId) ?? null
+  const selectedClass = classDetail
+    ? {
+        id: classDetail.id,
+        navn: classDetail.navn,
+        fag: classDetail.fag,
+        modulperiode: classDetail.modulperiode,
+        startdato: classDetail.startdato,
+        slutdato: classDetail.slutdato,
+        studenter: ((classDetail.students ?? []) as PlanningStudent[]),
+      }
+    : null
   const allPlans = [...ugeplaner, ...kladder]
   const selectedUgeplan = allPlans.find(u => u.id === selectedUgeplanId) ?? null
   const activeUgeplaner = ugeplaner
@@ -486,29 +431,10 @@ export function Planning() {
     )
   }
 
-  const handlePinClass = (classId: number) => {
-    if (!user) return
-    pinMutation.mutate(
-      { teacherId: user.id, classId },
-      { onSuccess: () => { setSelectedClassId(classId); closeFindHold() } }
-    )
-  }
-
-  const handleUnpinClass = (classId: number) => {
-    if (!user) return
-    unpinMutation.mutate({ teacherId: user.id, classId })
-    if (selectedClassId === classId) setSelectedClassId(null)
-  }
-
-  const pinnedIds = new Set(pinnedClasses.map(c => c.id))
-  const filteredClasses = allClasses.filter(c =>
-    !pinnedIds.has(c.id) && (
-      c.navn?.toLowerCase().includes(classSearch.toLowerCase()) ||
-      c.fag?.toLowerCase().includes(classSearch.toLowerCase()) ||
-      c.lærer?.toLowerCase().includes(classSearch.toLowerCase()) ||
-      c.modulperiode?.toLowerCase().includes(classSearch.toLowerCase())
-    )
-  )
+  const sidebarStudents = (selectedClass?.studenter ?? []).map((student) => ({
+    id: student.id,
+    name: student.navn,
+  }))
 
   const colHeight = 'calc(100vh - 60px - var(--mantine-spacing-md) * 2)'
 
@@ -518,82 +444,23 @@ export function Planning() {
     <Box h={colHeight} style={{ display: 'flex', gap: 'var(--mantine-spacing-sm)', overflow: 'hidden' }}>
 
       {/* ══ LEFT COLUMN ══ */}
-      <Paper withBorder w={240} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-        {/* ── Top half: Hold jeg følger ─────── */}
-        <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <Box p="sm" pb={4} style={{ flexShrink: 0 }}>
-            <Group justify="space-between" mb="xs">
-              <Text fw={700} size="sm" tt="uppercase" c="dimmed">Hold jeg følger</Text>
-              <Tooltip label="Find og tilføj hold" withArrow>
-                <ActionIcon size="sm" variant="light" onClick={openFindHold}>
-                  <IconPlus size={14} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-          </Box>
-          <ScrollArea style={{ flex: 1, minHeight: 0 }} px="sm" pb="sm">
-            {loadingPinned ? (
-              <Center py="xl"><Loader size="sm" /></Center>
-            ) : pinnedClasses.length === 0 ? (
-              <Stack align="center" gap="xs" py="xl">
-                <ThemeIcon size="lg" variant="light" color="gray">
-                  <IconChalkboard size={20} />
-                </ThemeIcon>
-                <Text size="xs" c="dimmed" ta="center">Ingen hold tilføjet</Text>
-                <Button size="xs" variant="light" leftSection={<IconSearch size={12} />} onClick={openFindHold}>
-                  Find hold
-                </Button>
-              </Stack>
-            ) : (
-              <Stack gap="xs">
-                {pinnedClasses.map(klass => (
-                  <ClassCard
-                    key={klass.id}
-                    klass={klass}
-                    selected={selectedClassId === klass.id}
-                    onSelect={() => setSelectedClassId(klass.id)}
-                    onUnpin={() => handleUnpinClass(klass.id)}
-                  />
-                ))}
-                <Button size="xs" variant="subtle" leftSection={<IconSearch size={12} />} onClick={openFindHold}>
-                  Find flere hold
-                </Button>
-              </Stack>
-            )}
-          </ScrollArea>
-        </Box>
-
-        <Divider />
-
-        {/* ── Bottom half: Elever på holdet ─── */}
-        <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <Box p="sm" pb={4} style={{ flexShrink: 0 }}>
-            <Group gap="xs">
-              <ThemeIcon size="sm" variant="light" color="blue">
-                <IconUsers size={12} />
-              </ThemeIcon>
-              <Text fw={700} size="xs" tt="uppercase" c="dimmed">
-                Elever på holdet{selectedClass ? ` (${selectedClass.studenter.length})` : ''}
-              </Text>
-            </Group>
-          </Box>
-          <ScrollArea style={{ flex: 1, minHeight: 0 }} px="sm" pb="sm">
-            {!selectedClass ? (
-              <Text size="xs" c="dimmed">Vælg et hold for at se elever</Text>
-            ) : selectedClass.studenter.length === 0 ? (
-              <Text size="xs" c="dimmed">Ingen elever på holdet</Text>
-            ) : (
-              <Stack gap={2}>
-                {selectedClass.studenter.map(s => (
-                  <Text key={s.id} size="sm">{s.navn}</Text>
-                ))}
-              </Stack>
-            )}
-          </ScrollArea>
-        </Box>
-
-      </Paper>
+      <Box w={240} style={{ flexShrink: 0 }}>
+        <FollowedClassStudentSidebar
+          selectedClassId={selectedClassId}
+          selectedStudentId={null}
+          students={sidebarStudents}
+          onClassChange={setSelectedClassId}
+          onStudentChange={() => {}}
+          classTitle="Hold jeg følger"
+          studentTitle={`Elever på holdet${selectedClass ? ` (${selectedClass.studenter.length})` : ''}`}
+          noClassSelectedText="Vælg et hold for at se elever"
+          emptyStudentsText="Ingen elever på holdet"
+          studentsLoading={classLoading}
+          onFindHoldOpenReady={(openFn) => {
+            openFindHoldRef.current = openFn
+          }}
+        />
+      </Box>
 
       {/* ══ MIDDLE COLUMN ══ */}
       <Paper withBorder flex={1} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
@@ -603,7 +470,11 @@ export function Planning() {
               <IconBook size={28} />
             </ThemeIcon>
             <Text c="dimmed">Vælg et hold for at se ugeplaner</Text>
-            <Button variant="light" leftSection={<IconSearch size={14} />} onClick={openFindHold}>
+            <Button
+              variant="light"
+              leftSection={<IconSearch size={14} />}
+              onClick={() => openFindHoldRef.current?.()}
+            >
               Find hold
             </Button>
           </Center>
@@ -901,43 +772,7 @@ export function Planning() {
         </ScrollArea>
       </Paper>
 
-      {/* ══ FIND HOLD MODAL ══ */}
-      <Modal opened={findHoldOpened} onClose={closeFindHold} title="Find hold" size="md">
-        <TextInput
-          placeholder="Søg på navn, fag, lærer eller modulperiode..."
-          leftSection={<IconSearch size={14} />}
-          value={classSearch}
-          onChange={(e) => setClassSearch(e.currentTarget.value)}
-          mb="md" autoFocus
-        />
-        <ScrollArea h={380}>
-          {loadingAll ? (
-            <Center py="xl"><Loader size="sm" /></Center>
-          ) : filteredClasses.length === 0 ? (
-            <Text ta="center" c="dimmed" py="xl" size="sm">
-              {classSearch ? 'Ingen hold matcher søgningen' : 'Alle hold er allerede tilføjet'}
-            </Text>
-          ) : (
-            <Stack gap="xs">
-              {filteredClasses.map(c => (
-                <Group key={c.id} justify="space-between" p="xs"
-                  style={{ border: '1px solid var(--mantine-color-gray-3)', borderRadius: 6 }}
-                >
-                  <Stack gap={0}>
-                    <Text size="sm" fw={600}>{c.fag} · {c.navn}</Text>
-                    <Text size="xs" c="dimmed">{c.lærer} · {c.modulperiode} · {c.status}</Text>
-                  </Stack>
-                  <Button size="xs" variant="light" leftSection={<IconPlus size={12} />}
-                    loading={pinMutation.isPending} onClick={() => handlePinClass(c.id)}
-                  >
-                    Tilføj
-                  </Button>
-                </Group>
-              ))}
-            </Stack>
-          )}
-        </ScrollArea>
-      </Modal>
+      
 
 
     </Box>

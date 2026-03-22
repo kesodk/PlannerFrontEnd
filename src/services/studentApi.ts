@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiService, type StudentDTO } from './api'
-import { isMockMode, isStaticMode } from '../config/apiConfig'
+import { isStaticMode } from '../config/apiConfig'
 import { staticMockService } from './staticMockService'
 import type { Student } from '../types/Student'
 

@@ -13,7 +13,7 @@ export function useEvaluations(filters?: {
   type?: 'Formativ' | 'Summativ'
   modulperiode?: string
 }) {
-  return useQuery({
+  return useQuery<Evaluation[]>({
     queryKey: ['evaluations', filters],
     queryFn: async () => {
       const params = new URLSearchParams()
@@ -26,9 +26,14 @@ export function useEvaluations(filters?: {
         ? `${EVALUATIONS_ENDPOINT}?${params.toString()}`
         : EVALUATIONS_ENDPOINT
       
-      const response: any = await apiService.getEvaluations(url)
+      const response: unknown = await apiService.getEvaluations(url)
       // Laravel API Resource returnerer { data: [...] }
-      return Array.isArray(response) ? response : (response.data || [])
+      if (Array.isArray(response)) {
+        return response as Evaluation[]
+      }
+
+      const wrapped = response as { data?: Evaluation[] }
+      return wrapped.data || []
     },
   })
 }
@@ -37,12 +42,13 @@ export function useEvaluations(filters?: {
  * Get single evaluation by ID
  */
 export function useEvaluation(id: number) {
-  return useQuery({
+  return useQuery<Evaluation>({
     queryKey: ['evaluations', id],
     queryFn: async () => {
-      const response: any = await apiService.getEvaluation(id)
+      const response: unknown = await apiService.getEvaluation(id)
       // Laravel API Resource returnerer { data: {...} }
-      return response.data || response
+      const wrapped = response as { data?: Evaluation }
+      return wrapped.data || (response as Evaluation)
     },
     enabled: !!id,
   })
@@ -113,13 +119,26 @@ export function useExportEvaluation() {
       format,
       scope = 'formativ',
       studentName,
+      exportData,
     }: {
       id: number
       format: 'pdf' | 'docx' | 'txt'
       scope?: 'formativ' | 'summativ'
       studentName?: string
+      exportData?: {
+        evaluation?: Evaluation
+        studentAftaler?: StudentAftale[]
+        student?: {
+          id?: number
+          navn?: string
+        }
+        classInfo?: {
+          id?: number
+          modulperiode?: string
+        }
+      }
     }) => {
-      const { blob, filename } = await apiService.exportEvaluation(id, format, scope, studentName)
+      const { blob, filename } = await apiService.exportEvaluation(id, format, scope, studentName, exportData)
       triggerBlobDownload(blob, filename)
     },
   })
