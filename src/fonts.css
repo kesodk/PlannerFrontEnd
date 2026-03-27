@@ -1,0 +1,7 @@
+@font-face {
+  font-family: 'Sofia Pro Semi Bold';
+  src: url('./assets/fonts/Sofia Pro Semi Bold Az.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}

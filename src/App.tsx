@@ -48,8 +48,8 @@ function AppInner() {
             >
               {desktopOpened ? <IconChevronLeft size={18} /> : <IconChevronRight size={18} />}
             </ActionIcon>
-            <Text size="lg" fw={500}>
-              AspIT Planner (test)
+            <Text size="xl" fw={600} style={{ fontFamily: 'Sofia Pro Semi Bold, sans-serif' }}>
+              AspIT Planner
             </Text>
           </Group>
           <Group gap="sm">

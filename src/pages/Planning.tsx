@@ -7,12 +7,12 @@ import {
 import {
   IconSearch, IconChevronLeft, IconChevronRight, IconDeviceFloppy,
   IconPlus, IconCopy, IconUsers, IconArrowRight,
-  IconArrowLeft, IconTrash, IconBook,
+  IconArrowLeft, IconTrash, IconBook, IconAlertCircle,
   IconBold, IconItalic, IconUnderline, IconStrikethrough, IconList, IconListNumbers, IconClearFormatting, IconLink,
 } from '@tabler/icons-react'
 import { useClass } from '../services/classApi'
 import {
-  useUgeplaner, useKladder, useCreateUgeplan, useUpdateUgeplan, useDeleteUgeplan, useSyncStudents,
+  useUgeplaner, useKladder, useCreateUgeplan, useUpdateUgeplan, useDeleteUgeplan, useSyncStudents, useActiveAftalerForStudents,
 } from '../services/planningApi'
 import type { Ugeplan, UgeplanDag, PlanningStudent } from '../services/planningApi'
 import { FollowedClassStudentSidebar } from '../components/FollowedClassStudentSidebar'
@@ -286,6 +286,11 @@ export function Planning() {
   const allPlans = [...ugeplaner, ...kladder]
   const selectedUgeplan = allPlans.find(u => u.id === selectedUgeplanId) ?? null
   const activeUgeplaner = ugeplaner
+  const {
+    data: activeAftalerByStudent = [],
+    isLoading: activeAftalerLoading,
+    isError: activeAftalerError,
+  } = useActiveAftalerForStudents(selectedClass?.studenter ?? [])
 
   const studenterInPlan = selectedUgeplan?.studenter ?? []
   // A student is "without plan" only if they aren't in ANY ugeplan this week
@@ -574,6 +579,51 @@ export function Planning() {
                         ))}
                       </tbody>
                     </table>
+
+                    <Paper withBorder p="sm" mt="md" style={{ backgroundColor: 'light-dark(var(--mantine-color-blue-0), rgba(80, 120, 200, 0.08))' }}>
+                      <Group justify="space-between" align="flex-start" mb="xs">
+                        <Group gap="xs" align="flex-start">
+                          <ThemeIcon size={26} radius="xl" variant="light" color="blue">
+                            <IconUsers size={14} />
+                          </ThemeIcon>
+                          <Box>
+                            <Text fw={700} size="sm">Aktive særaftaler på holdet</Text>
+                            <Text size="xs" c="dimmed">
+                              Overblik over elever med aktive aftaler, så der kan tages særligt hensyn i planlægningen.
+                            </Text>
+                          </Box>
+                        </Group>
+                        <Badge color="blue" variant="light">
+                          {activeAftalerByStudent.length} elever
+                        </Badge>
+                      </Group>
+
+                      {activeAftalerLoading ? (
+                        <Center py="sm"><Text size="xs" c="dimmed">Henter aktive aftaler...</Text></Center>
+                      ) : activeAftalerError ? (
+                        <Group gap="xs" c="red">
+                          <IconAlertCircle size={14} />
+                          <Text size="xs">Kunne ikke hente aktive aftaler lige nu.</Text>
+                        </Group>
+                      ) : activeAftalerByStudent.length === 0 ? (
+                        <Text size="sm" c="dimmed">Ingen elever på holdet har aktive særaftaler.</Text>
+                      ) : (
+                        <Stack gap="xs">
+                          {activeAftalerByStudent.map((entry) => (
+                            <Paper key={entry.studentId} withBorder p="xs">
+                              <Text fw={600} size="sm" mb={4}>{entry.studentNavn}</Text>
+                              <Stack gap={4}>
+                                {entry.aftaler.map((aftale) => (
+                                  <Text key={aftale.id ?? `${entry.studentId}-${aftale.dato}-${aftale.tekst}`} size="xs" c="dimmed">
+                                    {aftale.initialer} · {new Date(aftale.dato).toLocaleDateString('da-DK')} · {aftale.tekst}
+                                  </Text>
+                                ))}
+                              </Stack>
+                            </Paper>
+                          ))}
+                        </Stack>
+                      )}
+                    </Paper>
                   </Box>
                   </ScrollArea>
                 </>

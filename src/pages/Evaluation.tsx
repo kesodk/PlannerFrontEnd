@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from 'react'
+﻿import { useState, useRef, useEffect, useMemo } from 'react'
 import {
   Box,
   Grid,
@@ -22,12 +22,14 @@ import {
   Alert,
   Switch,
   Textarea,
+  Checkbox,
 } from '@mantine/core'
-import { IconBold, IconItalic, IconUnderline, IconStrikethrough, IconList, IconListNumbers, IconClearFormatting, IconLink, IconX, IconTrash, IconPlus, IconFileTypePdf, IconFileWord, IconFileText } from '@tabler/icons-react'
+import { IconBold, IconItalic, IconUnderline, IconStrikethrough, IconList, IconListNumbers, IconClearFormatting, IconLink, IconX, IconTrash, IconPlus, IconFileTypePdf, IconFileWord, IconFileText, IconPin } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
 import { useStudents } from '../services/studentApi'
 import { useClasses } from '../services/classApi'
 import { useEvaluations, useCreateEvaluation, useUpdateEvaluation, useDeleteEvaluation, useExportEvaluation, useStudentAftaler, useCreateStudentAftale, useToggleStudentAftale } from '../services/evaluationApi'
+import { useAssessmentHistory } from '../services/assessmentApi'
 import { availableFag } from '../data/mockClasses'
 import type { Evaluation, EvaluationGoal } from '../types/Evaluation'
 import { useAuth } from '../contexts/AuthContext'
@@ -207,6 +209,21 @@ function EditableField({ value, onChange, disabled = false, minHeight = 70, padd
   )
 }
 
+function getSharedForløbsplanMål(studentId: number | null, evaluations: Evaluation[]): string {
+  if (!studentId) return ''
+
+  const latestWithValue = evaluations
+    .filter((evaluation) => evaluation.studentId === studentId && evaluation.type === 'Formativ')
+    .sort((a, b) => {
+      const bTime = new Date(b.createdAt || b.dato).getTime()
+      const aTime = new Date(a.createdAt || a.dato).getTime()
+      return bTime - aTime
+    })
+    .find((evaluation) => (evaluation.forløbsplanMål || '').trim().length > 0)
+
+  return latestWithValue?.forløbsplanMål || ''
+}
+
 export function Evaluation() {
   const { user } = useAuth()
   const [selectedHoldId, setSelectedHoldId] = useState<number | null>(null)
@@ -224,6 +241,8 @@ export function Evaluation() {
   const [isSaveConfirmed, setIsSaveConfirmed] = useState(false)
   const saveConfirmTimeoutRef = useRef<number | null>(null)
   const [createEvaluationModalOpen, setCreateEvaluationModalOpen] = useState(false)
+  const [formativeTransferChoice, setFormativeTransferChoice] = useState<'none' | 'delmaal' | 'all'>('none')
+  const [subjectHistoryModalOpen, setSubjectHistoryModalOpen] = useState(false)
   const [exportModalOpen, setExportModalOpen] = useState(false)
   const [exportScope, setExportScope] = useState<'formativ' | 'summativ'>('formativ')
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
@@ -231,6 +250,7 @@ export function Evaluation() {
   const [newAftaleText, setNewAftaleText] = useState('')
   const [togglingAftaleId, setTogglingAftaleId] = useState<number | null>(null)
   const [disabledAftaleIds, setDisabledAftaleIds] = useState<number[]>([])
+  const [sharedForløbsplanMål, setSharedForløbsplanMål] = useState('')
   const toggleCooldownTimeoutsRef = useRef<number[]>([])
 
   const { data: students = [], isLoading: studentsLoading } = useStudents()
@@ -240,6 +260,11 @@ export function Evaluation() {
   const updateEvaluation = useUpdateEvaluation()
   const deleteEvaluation = useDeleteEvaluation()
   const exportEvaluation = useExportEvaluation()
+  const {
+    data: assessmentHistory = [],
+    isLoading: assessmentHistoryLoading,
+    isError: assessmentHistoryError,
+  } = useAssessmentHistory(selectedStudentId)
   const { data: studentAftaler = [], isLoading: aftaleLoading } = useStudentAftaler(selectedStudentId)
   const createAftale = useCreateStudentAftale()
   const toggleAftale = useToggleStudentAftale()
@@ -252,6 +277,15 @@ export function Evaluation() {
       toggleCooldownTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
     }
   }, [])
+
+  useEffect(() => {
+    if (!selectedStudentId) {
+      setSharedForløbsplanMål('')
+      return
+    }
+
+    setSharedForløbsplanMål(getSharedForløbsplanMål(selectedStudentId, evaluations))
+  }, [selectedStudentId, evaluations])
 
   const updateCurrentEvaluation = (evaluation: Evaluation | null) => {
     setCurrentEvaluation(evaluation)
@@ -279,11 +313,31 @@ export function Evaluation() {
         })
     : []
 
+  const latestFormativeEvaluation = studentEvaluations.find((evaluation) => evaluation.type === 'Formativ')
+
+  const latestFormativeDateLabel = latestFormativeEvaluation
+    ? (() => {
+        const sourceDate = latestFormativeEvaluation.createdAt
+          ? new Date(latestFormativeEvaluation.createdAt)
+          : new Date(latestFormativeEvaluation.dato)
+
+        if (Number.isNaN(sourceDate.getTime())) {
+          return latestFormativeEvaluation.dato
+        }
+
+        const day = String(sourceDate.getDate()).padStart(2, '0')
+        const month = String(sourceDate.getMonth() + 1).padStart(2, '0')
+        const year = sourceDate.getFullYear()
+        return `${day}-${month}-${year}`
+      })()
+    : null
+
   // Create and save a new empty evaluation immediately
-  const createAndSaveNewEvaluation = async () => {
+  const createAndSaveNewEvaluation = async (transferChoice: 'none' | 'delmaal' | 'all' = 'none') => {
     if (!selectedStudentId || !selectedHoldId) return
 
     const classData = classes.find(c => c.id === selectedHoldId)
+    const canTransferFromLatestFormative = evaluationType === 'Formativ' && !!latestFormativeEvaluation
     
     const newEvaluation: Evaluation = {
       studentId: selectedStudentId,
@@ -321,7 +375,7 @@ export function Evaluation() {
       næsteModulPrioritet2: '',
       næsteModulPrioritet3: '',
       bemærkninger: '',
-      forløbsplanMål: '',
+      forløbsplanMål: sharedForløbsplanMål,
       fagligtForløbsplanDelmål: '',
       personligtForløbsplanDelmål: '',
       socialtForløbsplanDelmål: '',
@@ -340,6 +394,20 @@ export function Evaluation() {
         arbejdsmæssigt: '',
         øvrigEvaluering: ''
       }
+    }
+
+    if (canTransferFromLatestFormative && transferChoice !== 'none') {
+      newEvaluation.fagligtForløbsplanDelmål = latestFormativeEvaluation!.fagligtForløbsplanDelmål || ''
+      newEvaluation.personligtForløbsplanDelmål = latestFormativeEvaluation!.personligtForløbsplanDelmål || ''
+      newEvaluation.socialtForløbsplanDelmål = latestFormativeEvaluation!.socialtForløbsplanDelmål || ''
+      newEvaluation.arbejdsmæssigtForløbsplanDelmål = latestFormativeEvaluation!.arbejdsmæssigtForløbsplanDelmål || ''
+    }
+
+    if (canTransferFromLatestFormative && transferChoice === 'all') {
+      newEvaluation.fagligtMål = { ...latestFormativeEvaluation!.fagligtMål }
+      newEvaluation.personligtMål = { ...latestFormativeEvaluation!.personligtMål }
+      newEvaluation.socialtMål = { ...latestFormativeEvaluation!.socialtMål }
+      newEvaluation.arbejdsmæssigtMål = { ...latestFormativeEvaluation!.arbejdsmæssigtMål }
     }
 
     try {
@@ -412,7 +480,12 @@ export function Evaluation() {
 
     try {
       // Ensure type always matches the active tab
-      const evaluationToSave = { ...currentEvaluation, type: evaluationType }
+      const evaluationToSave = {
+        ...currentEvaluation,
+        type: evaluationType,
+        // STU-indstilling er elev-fælles og skal følge eleven på tværs af evalueringer.
+        forløbsplanMål: sharedForløbsplanMål,
+      }
 
       // Check if this is an existing evaluation (has valid id and exists in fetched list)
       const isExisting = !!evaluationToSave.id && evaluationToSave.id > 0 && 
@@ -565,6 +638,21 @@ export function Evaluation() {
 
   const selectedClass = classes.find(c => c.id === selectedHoldId)
   const selectedStudent = students.find(s => s.id === selectedStudentId)
+  const ghostAftaleDate = new Date().toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: '2-digit' })
+  const subjectHistoryRows = useMemo(() => {
+    const seen = new Set<string>()
+    return assessmentHistory
+      .filter((row) => !!row.modulperiode && !!row.fag)
+      .filter((row) => {
+        const key = `${row.modulperiode}:${row.fag}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+  }, [assessmentHistory])
+  const evaluationForExport = currentEvaluation
+    ? { ...currentEvaluation, forløbsplanMål: sharedForløbsplanMål }
+    : null
   const sidebarStudents = studentsInClass.map((student) => ({
     id: student.id,
     name: student.navn,
@@ -575,6 +663,7 @@ export function Evaluation() {
     const newType = value as 'Formativ' | 'Summativ'
     setEvaluationType(newType)
     setCurrentEvaluation(evaluationDrafts[newType] ? { ...evaluationDrafts[newType]! } : null)
+    setFormativeTransferChoice('none')
   }
 
   // Show loading state
@@ -808,14 +897,44 @@ export function Evaluation() {
               <Stack gap="xl">
                 {/* Mål fra forløbsplan/STU-indstilling */}
                 <div>
-                  <Title order={5} mb={0} style={EVAL_STYLES.sectionHeader}>Mål fra forløbsplan/STU-indstilling</Title>
+                  <Box style={EVAL_STYLES.sectionHeader}>
+                    <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
+                      <div>
+                        <Title order={5} mb={4} style={{ padding: 0, backgroundColor: 'transparent', border: 'none', borderRadius: 0 }}>
+                          Mål fra forløbsplan/STU-indstilling
+                        </Title>
+                        <Text c="dimmed" size="xs" style={{ color: 'light-dark(var(--mantine-color-blue-5), var(--mantine-color-gray-5))' }}>
+                          Målene her følger eleven på tværs af alle formative evalueringer.
+                        </Text>
+                      </div>
+
+                      <Tooltip label="Fast mål på tværs af evalueringer" withArrow>
+                        <Box
+                          aria-label="Fast mål"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 26,
+                            height: 26,
+                            borderRadius: 999,
+                            backgroundColor: 'light-dark(rgba(255,255,255,0.55), rgba(117, 113, 113, 0.52))',
+                            color: 'light-dark(var(--mantine-color-blue-8), var(--mantine-color-blue-2))',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <IconPin size={16} />
+                        </Box>
+                      </Tooltip>
+                    </Group>
+                  </Box>
                   <Table withTableBorder style={{ tableLayout: 'fixed' }}>
                     <Table.Tbody>
                       <Table.Tr>
                         <Table.Td colSpan={4}>
                           <EditableField
-                            value={currentEvaluation.forløbsplanMål || ''}
-                            onChange={(value) => updateEvaluationField('forløbsplanMål', value)}
+                            value={sharedForløbsplanMål}
+                            onChange={setSharedForløbsplanMål}
                             minHeight={90}
                             padding="4px 8px"
                           />
@@ -1078,7 +1197,17 @@ export function Evaluation() {
 
                 {/* Næste modul */}
                 <div>
-                  <Title order={5} mb="xs">Næste modul</Title>
+                  <Group justify="space-between" align="center" mb="xs">
+                    <Title order={5} mb={0}>Næste modul</Title>
+                    <Button
+                      variant="light"
+                      size="xs"
+                      onClick={() => setSubjectHistoryModalOpen(true)}
+                      disabled={!selectedStudentId}
+                    >
+                      Se historik
+                    </Button>
+                  </Group>
                   <Group grow>
                     <Select
                       label="1. prioritet"
@@ -1122,10 +1251,37 @@ export function Evaluation() {
                 {selectedStudentId && (
                   <div>
                     <Divider mb="md" />
-                    <Title order={5} mb="xs">Opfølgning og aftaler</Title>
-                    <Text size="xs" c="dimmed" mb="sm">
-                      Aftaler og opfølgninger følger eleven på tværs af alle modulperioder.
-                    </Text>
+                    <Box style={EVAL_STYLES.sectionHeader}>
+                      <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
+                        <div>
+                          <Title order={5} mb={4} style={{ padding: 0, backgroundColor: 'transparent', border: 'none', borderRadius: 0 }}>
+                            Opfølgning og aftaler
+                          </Title>
+                          <Text c="dimmed" size="xs" style={{ color: 'light-dark(var(--mantine-color-blue-5), var(--mantine-color-gray-5))' }}>
+                            Aftaler og opfølgninger følger eleven på tværs af alle modulperioder.
+                          </Text>
+                        </div>
+
+                        <Tooltip label="Fast på tværs af evalueringer" withArrow>
+                          <Box
+                            aria-label="Fast aftaler"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: 26,
+                              height: 26,
+                              borderRadius: 999,
+                              backgroundColor: 'light-dark(rgba(255,255,255,0.55), rgba(117, 113, 113, 0.52))',
+                              color: 'light-dark(var(--mantine-color-blue-8), var(--mantine-color-blue-2))',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <IconPin size={16} />
+                          </Box>
+                        </Tooltip>
+                      </Group>
+                    </Box>
 
                     {/* Ny aftale */}
                     <Paper withBorder p="sm" mb="md" style={{ backgroundColor: 'light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-8))' }}>
@@ -1203,7 +1359,39 @@ export function Evaluation() {
                         </Table.Tbody>
                       </Table>
                     ) : (
-                      <Text size="sm" c="dimmed" ta="center">Ingen aftaler registreret</Text>
+                      <>
+                        <Table withTableBorder style={{ tableLayout: 'fixed', opacity: 0.72, userSelect: 'none', WebkitUserSelect: 'none', pointerEvents: 'none' }}>
+                          <Table.Thead>
+                            <Table.Tr style={EVAL_STYLES.thRow}>
+                              <Table.Th style={{ ...EVAL_STYLES.th1, width: '110px' }}>Dato</Table.Th>
+                              <Table.Th style={{ ...EVAL_STYLES.th2, width: '70px' }}>Initialer</Table.Th>
+                              <Table.Th style={{ ...EVAL_STYLES.th3, width: '70px' }}>Aktiv</Table.Th>
+                              <Table.Th style={EVAL_STYLES.th4}>Tekst</Table.Th>
+                            </Table.Tr>
+                          </Table.Thead>
+                          <Table.Tbody>
+                            <Table.Tr>
+                              <Table.Td style={{ width: '110px', fontSize: 13, borderRight: '1px solid var(--mantine-color-default-border)', color: 'var(--mantine-color-dimmed)' }}>{ghostAftaleDate}</Table.Td>
+                              <Table.Td style={{ width: '70px', fontSize: 13, fontWeight: 600, borderRight: '1px solid var(--mantine-color-default-border)', color: 'var(--mantine-color-dimmed)' }}> ---- </Table.Td>
+                              <Table.Td style={{ width: '70px', borderRight: '1px solid var(--mantine-color-default-border)' }}>
+                                <Switch checked={false} size="sm" disabled />
+                              </Table.Td>
+                              <Table.Td style={{ fontSize: 13, color: 'var(--mantine-color-dimmed)' }}>Eksempel på aftale vises her</Table.Td>
+                            </Table.Tr>
+                            <Table.Tr>
+                              <Table.Td style={{ width: '110px', fontSize: 13, borderRight: '1px solid var(--mantine-color-default-border)', color: 'var(--mantine-color-dimmed)' }}>{ghostAftaleDate}</Table.Td>
+                              <Table.Td style={{ width: '70px', fontSize: 13, fontWeight: 600, borderRight: '1px solid var(--mantine-color-default-border)', color: 'var(--mantine-color-dimmed)' }}> ---- </Table.Td>
+                              <Table.Td style={{ width: '70px', borderRight: '1px solid var(--mantine-color-default-border)' }}>
+                                <Switch checked size="sm" disabled />
+                              </Table.Td>
+                              <Table.Td style={{ fontSize: 13, color: 'var(--mantine-color-dimmed)' }}>Når der oprettes aftaler, vises de her.</Table.Td>
+                            </Table.Tr>
+                          </Table.Tbody>
+                        </Table>
+                        <Text size="xs" c="dimmed" ta="center" mt="md">
+                          Ingen aftaler registreret endnu. Skriv i feltet ovenfor, og tryk på "Tilføj aftale" for at oprette den første aftale.
+                        </Text>
+                      </>
                     )}
                   </div>
                 )}
@@ -1360,7 +1548,10 @@ export function Evaluation() {
                   color="green"
                   variant="filled"
                   fullWidth
-                  onClick={() => setCreateEvaluationModalOpen(true)}
+                  onClick={() => {
+                    setFormativeTransferChoice('none')
+                    setCreateEvaluationModalOpen(true)
+                  }}
                 >
                   Opret evaluering
                 </Button>
@@ -1435,6 +1626,50 @@ export function Evaluation() {
 
       {/* Delete Modal */}
       <Modal
+        opened={subjectHistoryModalOpen}
+        onClose={() => setSubjectHistoryModalOpen(false)}
+        title="Fag-historik"
+        centered
+        size="md"
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Oversigt over tidligere fag for <strong>{selectedStudent?.navn || 'valgt elev'}</strong>.
+          </Text>
+
+          {assessmentHistoryLoading ? (
+            <Center py="md"><Loader size="sm" /></Center>
+          ) : assessmentHistoryError ? (
+            <Alert color="red" title="Kunne ikke hente historik">
+              Prøv igen om et øjeblik.
+            </Alert>
+          ) : subjectHistoryRows.length === 0 ? (
+            <Text size="sm" c="dimmed" ta="center" py="sm">
+              Ingen fag-historik fundet for denne elev endnu.
+            </Text>
+          ) : (
+            <Table withTableBorder>
+              <Table.Thead>
+                <Table.Tr style={EVAL_STYLES.thRow}>
+                  <Table.Th style={{ ...EVAL_STYLES.th1, width: '140px' }}>Modulperiode</Table.Th>
+                  <Table.Th style={EVAL_STYLES.th2}>Fag</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {subjectHistoryRows.map((row, index) => (
+                  <Table.Tr key={`${row.modulperiode}:${row.fag}:${index}`}>
+                    <Table.Td style={{ ...EVAL_STYLES.td1, width: '140px' }}>{row.modulperiode}</Table.Td>
+                    <Table.Td style={EVAL_STYLES.td2}>{row.fag}</Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          )}
+        </Stack>
+      </Modal>
+
+      {/* Delete Modal */}
+      <Modal
         opened={deleteModalOpen}
         onClose={() => {
           setDeleteModalOpen(false)
@@ -1475,18 +1710,75 @@ export function Evaluation() {
       {/* Create Evaluation Modal */}
       <Modal
         opened={createEvaluationModalOpen}
-        onClose={() => setCreateEvaluationModalOpen(false)}
+        onClose={() => {
+          setCreateEvaluationModalOpen(false)
+          setFormativeTransferChoice('none')
+        }}
         title="Opret evaluering"
         centered
       >
         <Stack gap="md">
-          <Text>
-            Du er ved at oprette en <strong>{evaluationType.toLowerCase()}</strong> evaluering for <strong>{selectedStudent?.navn || 'denne elev'}</strong> i <strong>{selectedClass?.modulperiode || 'modulperioden'}</strong> - vil du fortsætte?
-          </Text>
+          <Stack gap={2}>
+            <Text>
+              Du er ved at oprette en <strong>{evaluationType.toLowerCase()}</strong> evaluering for
+            </Text>
+            <Text>
+              <strong>{selectedStudent?.navn || 'denne elev'}</strong> i <strong>{selectedClass?.modulperiode || 'modulperioden'}</strong>
+            </Text>
+            <Text>
+              Vil du fortsætte?
+            </Text>
+          </Stack>
+
+          {evaluationType === 'Formativ' && (
+            <Paper withBorder p="sm" style={{ backgroundColor: 'light-dark(var(--mantine-color-blue-0), rgba(80, 120, 200, 0.08))' }}>
+              {latestFormativeEvaluation ? (
+                <Stack gap="xs">
+                  <Text size="sm" fw={600}>
+                    Mål fra sidste formative evaluering
+                    <br />
+                    ({latestFormativeEvaluation.oprettetAf} · {latestFormativeEvaluation.modulperiode || 'ukendt modulperiode'} - {latestFormativeDateLabel})
+                  </Text>
+
+                  <Checkbox
+                    checked={formativeTransferChoice === 'delmaal' || formativeTransferChoice === 'all'}
+                    label="Overfør delmål fra forløbsplan"
+                    onChange={(event) => {
+                      const checked = event.currentTarget.checked
+                      if (checked) {
+                        if (formativeTransferChoice !== 'all') {
+                          setFormativeTransferChoice('delmaal')
+                        }
+                      } else {
+                        setFormativeTransferChoice('none')
+                      }
+                    }}
+                  />
+
+                  <Checkbox
+                    checked={formativeTransferChoice === 'all'}
+                    label="Overfør alle mål"
+                    onChange={(event) => {
+                      const checked = event.currentTarget.checked
+                      setFormativeTransferChoice(checked ? 'all' : 'delmaal')
+                    }}
+                  />
+                </Stack>
+              ) : (
+                <Text size="sm" c="dimmed">
+                  Ingen tidligere formative evalueringer fundet for denne elev.
+                </Text>
+              )}
+            </Paper>
+          )}
+
           <Group justify="flex-end" gap="xs">
             <Button 
               variant="default" 
-              onClick={() => setCreateEvaluationModalOpen(false)}
+              onClick={() => {
+                setCreateEvaluationModalOpen(false)
+                setFormativeTransferChoice('none')
+              }}
             >
               Annuller
             </Button>
@@ -1494,7 +1786,8 @@ export function Evaluation() {
               color="green" 
               onClick={() => {
                 setCreateEvaluationModalOpen(false)
-                createAndSaveNewEvaluation()
+                createAndSaveNewEvaluation(formativeTransferChoice)
+                setFormativeTransferChoice('none')
               }}
             >
               Fortsæt
@@ -1561,7 +1854,7 @@ export function Evaluation() {
                     scope: exportScope,
                     studentName: selectedStudent?.navn,
                     exportData: {
-                      evaluation: currentEvaluation,
+                      evaluation: evaluationForExport || currentEvaluation,
                       studentAftaler,
                       student: selectedStudent
                         ? { id: selectedStudent.id, navn: selectedStudent.navn }
@@ -1600,7 +1893,7 @@ export function Evaluation() {
                     scope: exportScope,
                     studentName: selectedStudent?.navn,
                     exportData: {
-                      evaluation: currentEvaluation,
+                      evaluation: evaluationForExport || currentEvaluation,
                       studentAftaler,
                       student: selectedStudent
                         ? { id: selectedStudent.id, navn: selectedStudent.navn }
@@ -1639,7 +1932,7 @@ export function Evaluation() {
                     scope: exportScope,
                     studentName: selectedStudent?.navn,
                     exportData: {
-                      evaluation: currentEvaluation,
+                      evaluation: evaluationForExport || currentEvaluation,
                       studentAftaler,
                       student: selectedStudent
                         ? { id: selectedStudent.id, navn: selectedStudent.navn }

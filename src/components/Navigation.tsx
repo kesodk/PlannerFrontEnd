@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { ScrollArea, Stack, Collapse } from '@mantine/core'
+import { ScrollArea, Stack, Collapse, Modal, Text, Group, Divider } from '@mantine/core'
 import { 
   IconCalendarCheck, 
   IconDashboard, 
@@ -35,6 +35,7 @@ const adminLinks = [
 
 export function Navigation() {
   const [adminOpen, setAdminOpen] = useState(false)
+  const [versionModalOpen, setVersionModalOpen] = useState(false)
 
   const mainItems = mainLinks.map((item) => (
     <NavLink
@@ -63,31 +64,88 @@ export function Navigation() {
   ))
 
   return (
-    <nav className={classes.navbar}>
-      <div className={classes.navbarMain}>
-        <ScrollArea className={classes.links}>
-          <div className={classes.linksInner}>
-            <Stack gap={0}>
-              {mainItems}
-              
-              <button
-                className={`${classes.link} ${classes.expandButton} ${adminOpen ? classes.expanded : ''}`}
-                onClick={() => setAdminOpen(!adminOpen)}
-              >
-                <IconSettings className={classes.linkIcon} stroke={1.5} />
-                <span>Administration</span>
-                <IconChevronDown className={classes.chevron} stroke={1.5} />
-              </button>
-              
-              <Collapse in={adminOpen}>
-                <Stack gap={0}>
-                  {adminItems}
-                </Stack>
-              </Collapse>
-            </Stack>
+    <>
+      <nav className={classes.navbar}>
+        <div className={classes.navbarMain}>
+          <ScrollArea className={classes.links}>
+            <div className={classes.linksInner}>
+              <Stack gap={0}>
+                {mainItems}
+                
+                <button
+                  className={`${classes.link} ${classes.expandButton} ${adminOpen ? classes.expanded : ''}`}
+                  onClick={() => setAdminOpen(!adminOpen)}
+                  type="button"
+                >
+                  <IconSettings className={classes.linkIcon} stroke={1.5} />
+                  <span>Administration</span>
+                  <IconChevronDown className={classes.chevron} stroke={1.5} />
+                </button>
+                
+                <Collapse in={adminOpen}>
+                  <Stack gap={0}>
+                    {adminItems}
+                  </Stack>
+                </Collapse>
+              </Stack>
+            </div>
+          </ScrollArea>
+        </div>
+
+        <div className={classes.versionFooter}>
+          <button
+            className={classes.versionButton}
+            onClick={() => setVersionModalOpen(true)}
+            type="button"
+          >
+            <span className={classes.versionLabel}>Version</span>
+            <span className={classes.versionValue}>1.1.0</span>
+          </button>
+        </div>
+      </nav>
+
+      <Modal
+        opened={versionModalOpen}
+        onClose={() => setVersionModalOpen(false)}
+        title={<Text fw={700}>Versionshistorik</Text>}
+        centered
+        size="lg"
+      >
+        <Stack gap="md">
+          <div className={classes.releaseBlock}>
+            <Group justify="space-between" align="flex-start" mb="xs">
+              <div>
+                <Text className={classes.releaseTitle}>Version 1.1.0</Text>
+                <Text size="xs" c="dimmed">Aktuel release</Text>
+              </div>
+              <Text size="xs" className={classes.releaseDate}>27.03.2026</Text>
+            </Group>
+
+            <ul className={classes.releaseList}>
+              <li><strong>Bug fix:</strong> STU-indstilling følger nu eleven på tværs af evalueringer.</li>
+              <li><strong>Ny feature:</strong> Aktive aftaler kan nu også ses, når man opretter ugeplaner.</li>
+              <li><strong>Ny feature:</strong> Elevens fag-historik vises nu, når man vælger de 3 prioriteter til næste modul.</li>
+              <li><strong>Ny feature:</strong> Ved oprettelse af ny formativ evaluering kan mål og/eller delmål overføres fra forrige evaluering.</li>
+            </ul>
           </div>
-        </ScrollArea>
-      </div>
-    </nav>
+
+          <Divider />
+
+          <div className={classes.releaseBlock}>
+            <Group justify="space-between" align="flex-start" mb="xs">
+              <div>
+                <Text className={classes.releaseTitle}>Version 1.0.0</Text>
+                <Text size="xs" c="dimmed">Første release</Text>
+              </div>
+              <Text size="xs" className={classes.releaseDate}>22.03.2026</Text>
+            </Group>
+
+            <ul className={classes.releaseList}>
+              <li>Første officielle release af AspIT Planner (web) med alle kernefunktioner som vi kender fra desktop applikationen.</li>
+            </ul>
+          </div>
+        </Stack>
+      </Modal>
+    </>
   )
 }

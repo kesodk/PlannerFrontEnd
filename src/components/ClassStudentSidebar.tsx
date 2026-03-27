@@ -16,7 +16,7 @@ import {
 } from '@mantine/core'
 import { IconPin, IconUser } from '@tabler/icons-react'
 
-const CLASS_BADGE_WIDTH = 46
+const CLASS_BADGE_WIDTH = 52
 
 export type SidebarClassItem = {
   id: number

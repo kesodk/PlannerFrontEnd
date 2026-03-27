@@ -24,7 +24,7 @@ const newsItems: DashboardNews[] = [
 Platformen kræver ingen lokal installation, ingen manuelle opdateringer og ingen ventetid. Bare log ind, og kom i gang - uanset om du sidder på skolen eller arbejder hjemmefra.
 Sammenlignet med den tidligere lokalt installerede version får du nu et markant stærkere værktøj med bedre overblik, flere muligheder og en mere fleksibel arbejdsproces. I at med jeg selv har udviklet både backend og frontend, har jeg kunnet optimere hele brugeroplevelsen og implementere funktioner, der tidligere var umulige eller meget besværlige at få på plads - f.eks. evalueringsfeltet til "socialt mål", som man tænkte burde været simpelt, men som bare altid har manglet. Det betyder også at jeg meget hurtigt kan tilføje nye funktioner og forbedringer løbende, da jeg har fuld kontrol med hele systemet.`,
     author: 'KESO',
-    date: '19-03-2026',
+    date: '22-03-2026',
     featured: true,
     highlights: [
       'Meget hurtigere oplevelse med minimal loading og mere flydende navigation.',
@@ -53,7 +53,7 @@ Frontend er udviklet i React + TypeScript med Vite som build tool, Mantine som U
 
 Backend er bygget i Laravel 12 (PHP 8.3+) med MySQL, hvor Laravel Sanctum håndterer token-baseret login. API Resources sikrer ensartede JSON-responser, så integrationen mellem klient og server er stabil og forudsigelig.`,
     author: 'KESO',
-    date: '18-03-2026',
+    date: '22-03-2026',
     highlights: [
       'Frontend: React 19, TypeScript, Vite 7, Mantine 8, React Router 7, TanStack Query.',
       'Forms & validation: React Hook Form + Zod.',

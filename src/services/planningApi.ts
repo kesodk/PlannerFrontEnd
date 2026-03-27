@@ -45,6 +45,19 @@ export interface Ugeplan {
   updated_at: string
 }
 
+export interface StudentActiveAftale {
+  id?: number
+  dato: string
+  initialer: string
+  tekst: string
+}
+
+export interface StudentActiveAftaler {
+  studentId: number
+  studentNavn: string
+  aftaler: StudentActiveAftale[]
+}
+
 // ─── Fetch helper ────────────────────────────────────────────────────────────
 
 async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -72,6 +85,44 @@ export const planningKeys = {
   ugeplaner: (classId: number | null, uge: number, aar: number) =>
     ['planning', 'ugeplaner', classId, uge, aar] as const,
   kladder: (classId: number | null) => ['planning', 'kladder', classId] as const,
+  activeAftaler: (studentIds: number[]) => ['planning', 'active-aftaler', [...studentIds].sort((a, b) => a - b).join(',')] as const,
+}
+
+// ─── Hooks: active student agreements ────────────────────────────────────────
+
+export function useActiveAftalerForStudents(students: PlanningStudent[]) {
+  const studentIds = students.map((student) => student.id)
+
+  return useQuery({
+    queryKey: planningKeys.activeAftaler(studentIds),
+    enabled: studentIds.length > 0,
+    queryFn: async () => {
+      const results = await Promise.all(
+        students.map(async (student) => {
+          const response = await apiFetch<any>(`/students/${student.id}/aftaler`)
+          const aftaler = Array.isArray(response) ? response : (response?.data || [])
+
+          const activeAftaler = aftaler
+            .filter((aftale: any) => !!aftale?.aktiv)
+            .map((aftale: any) => ({
+              id: aftale.id,
+              dato: aftale.dato,
+              initialer: aftale.initialer,
+              tekst: aftale.tekst,
+            })) as StudentActiveAftale[]
+
+          return {
+            studentId: student.id,
+            studentNavn: student.navn,
+            aftaler: activeAftaler,
+          } as StudentActiveAftaler
+        })
+      )
+
+      return results.filter((result) => result.aftaler.length > 0)
+    },
+    staleTime: 1000 * 60,
+  })
 }
 
 // ─── Hooks: pinned classes ────────────────────────────────────────────────────
