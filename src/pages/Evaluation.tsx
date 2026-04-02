@@ -679,7 +679,7 @@ export function Evaluation() {
     <>
       <Grid gutter="md">
         {/* Venstre kolonne - Hold og Elever */}
-        <Grid.Col span={2}>
+        <Grid.Col span={{ base: 12, md: 'content' }} style={{ width: 240 }}>
           <Box h="calc(100vh - 120px)">
             <FollowedClassStudentSidebar
               selectedClassId={selectedHoldId}
@@ -710,7 +710,7 @@ export function Evaluation() {
         </Grid.Col>
 
         {/* Midter kolonne - Evalueringsformular */}
-        <Grid.Col span={8}>
+        <Grid.Col span={{ base: 12, md: 'auto' }}>
           {selectedStudent && selectedClass && !currentEvaluation ? (
             <Card shadow="sm" padding="lg" radius="md" withBorder style={{ height: 'calc(100vh - 120px)', overflow: 'auto' }}>
               <Tabs value={evaluationType} onChange={handleEvaluationTypeChange} mb="md">
@@ -1534,7 +1534,7 @@ export function Evaluation() {
         </Grid.Col>
 
         {/* Højre kolonne - Historik */}
-        <Grid.Col span={2}>
+        <Grid.Col span={{ base: 12, md: 'content' }} style={{ width: 220 }}>
           <Card shadow="sm" padding="md" radius="md" withBorder style={{ height: 'calc(100vh - 120px)', overflow: 'auto' }}>
             <Title order={4} mb="md">
               {evaluationType === 'Formativ' ? 'Elevens formative evalueringer' : 'Elevens summative evalueringer'}

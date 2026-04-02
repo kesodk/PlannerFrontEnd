@@ -576,7 +576,7 @@ export function Attendance() {
     <>
       <Grid gutter="md" style={{ height: "100%" }}>
       {/* ═══ LEFT: Hold + Elevliste (narrow) ═══ */}
-      <Grid.Col span={{ base: 12, md: 2 }}>
+      <Grid.Col span={{ base: 12, md: 'content' }} style={{ width: 240 }}>
         <Box h="calc(100vh - 120px)">
         <FollowedClassStudentSidebar
           selectedClassId={selectedClassId}
@@ -607,7 +607,7 @@ export function Attendance() {
       </Grid.Col>
 
       {/* ═══ MIDDLE: Kalender (wider) ═══ */}
-      <Grid.Col span={{ base: 12, md: 8 }}>
+      <Grid.Col span={{ base: 12, md: 'auto' }}>
         <Card withBorder radius="md" padding="xs">
           {colorScheme === "dark" && (
             <Group justify="flex-end" mb="xs" px="xs" gap="xs">
@@ -933,7 +933,7 @@ export function Attendance() {
       </Grid.Col>
 
       {/* ═══ RIGHT: Detaljer-panel ═══ */}
-      <Grid.Col span={{ base: 12, md: 2 }}>
+      <Grid.Col span={{ base: 12, md: 'content' }}>
         <Card
           withBorder
           radius="md"

@@ -196,9 +196,9 @@ export function Oversigter() {
 
   return (
     <Stack gap="md">
-      <Grid gutter="md" columns={10}>
+      <Grid gutter="md" columns={100}>
         {/* ── LEFT COLUMN: Elev-oversigt (60%) ─────────────────────────── */}
-        <Grid.Col span={{ base: 10, md: 7 }}>
+        <Grid.Col span={{ base: 100, md: 68, lg: 68 }}>
           <Paper withBorder p="md" radius="md" h="100%">
             {/* Header / filters */}
             <Stack gap="sm" mb="md">
@@ -294,17 +294,17 @@ export function Oversigter() {
                   withColumnBorders
                   verticalSpacing={4}
                   fz="xs"
-                  style={{ minWidth: 660 }}
+                  style={{ minWidth: 660, width: 'max-content', tableLayout: 'auto' }}
                 >
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th style={{ minWidth: 140 }}>Elev</Table.Th>
+                      <Table.Th style={{ minWidth: 180, whiteSpace: 'nowrap'  }}>Elev</Table.Th>
                       <Table.Th w={42} ta="center">Sem.</Table.Th>
                       <Table.Th style={{ minWidth: 100 }}>Nuv. hold</Table.Th>
-                      <Table.Th style={{ minWidth: 100 }}>1. prior.</Table.Th>
-                      <Table.Th style={{ minWidth: 100 }}>2. prior.</Table.Th>
-                      <Table.Th style={{ minWidth: 100 }}>3. prior.</Table.Th>
-                      <Table.Th style={{ minWidth: 120, maxWidth: 130 }}>Næste modul</Table.Th>
+                      <Table.Th style={{ minWidth: 80, whiteSpace: 'nowrap' }}>1. prior.</Table.Th>
+                      <Table.Th style={{ minWidth: 80, whiteSpace: 'nowrap' }}>2. prior.</Table.Th>
+                      <Table.Th style={{ minWidth: 80, whiteSpace: 'nowrap' }}>3. prior.</Table.Th>
+                      <Table.Th style={{ width: 150 }}>Næste modul</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
@@ -355,7 +355,7 @@ export function Oversigter() {
                           <Table.Td>
                             <PrioritetBadge value={elev.prioritet_3} priority={3} />
                           </Table.Td>
-                          <Table.Td>
+                          <Table.Td style={{ whiteSpace: 'nowrap', minWidth: 120 }}>
                             <Select
                               data={FAG_OPTIONS}
                               value={elev.tildelt_fag}
@@ -385,7 +385,7 @@ export function Oversigter() {
         </Grid.Col>
 
         {/* ── RIGHT COLUMN: Aktivitetsplan (40%) ───────────────────────── */}
-        <Grid.Col span={{ base: 10, md: 3 }}>
+        <Grid.Col span={{ base: 100, md: 32, lg: 32 }}>
           <Paper withBorder p="md" radius="md" h="100%">
             <Group justify="space-between" mb="md">
               <Title order={4}>Aktivitetsplan</Title>
@@ -449,8 +449,8 @@ interface AktivitetsPlanProps {
 const AFDELING_SHORT: Record<string, string> = {
   Østjylland: 'Østjy.',
   Trekanten: 'Trek.',
-  Sønderjylland: 'Sønderjy.',
-  Storkøbenhavn: 'Storkbh.',
+  Sønderjylland: 'Sndjyl',
+  Storkøbenhavn: 'Kbh.',
 }
 
 const AFDELING_COLORS: Record<string, string> = {
@@ -473,11 +473,11 @@ function AktivitetsplanTable({ aktivitetsplan }: AktivitetsPlanProps) {
         withColumnBorders
         verticalSpacing={4}
         fz="xs"
-        style={{ minWidth: 320 }}
+        style={{ minWidth: 320, tableLayout: 'auto' }}
       >
         <Table.Thead>
           <Table.Tr>
-            <Table.Th style={{ minWidth: 110 }}>Fag</Table.Th>
+            <Table.Th style={{ whiteSpace: 'nowrap', width: 1 }}>Fag</Table.Th>
             {afdelinger.map((afd) => (
               <Table.Th key={afd} ta="center" w={60} c={AFDELING_COLORS[afd] ?? 'blue'}>
                 <Tooltip label={afd} withArrow>
@@ -498,7 +498,9 @@ function AktivitetsplanTable({ aktivitetsplan }: AktivitetsPlanProps) {
                 key={row.fag}
                 style={!hasAny ? { opacity: 0.5 } : undefined}
               >
-                <Table.Td fw={hasAny ? 500 : undefined}>{row.fag}</Table.Td>
+                <Table.Td fw={hasAny ? 500 : undefined} style={{ whiteSpace: 'nowrap' }}>
+                  {row.fag}
+                </Table.Td>
                 {afdelinger.map((afd) => {
                   const val = row[afd] as number
                   const color = AFDELING_COLORS[afd] ?? 'blue'

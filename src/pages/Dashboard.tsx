@@ -22,7 +22,7 @@ const newsItems: DashboardNews[] = [
     title: 'Velkommen til den nye AspIT Planner!',
     content: `Jeg har bygget hele platformen (backend + frontend) fra bunden som en moderne webapp, så den er hurtig og intuitiv.
 Platformen kræver ingen lokal installation, ingen manuelle opdateringer og ingen ventetid. Bare log ind, og kom i gang - uanset om du sidder på skolen eller arbejder hjemmefra.
-Sammenlignet med den tidligere lokalt installerede version får du nu et markant stærkere værktøj med bedre overblik, flere muligheder og en mere fleksibel arbejdsproces. I at med jeg selv har udviklet både backend og frontend, har jeg kunnet optimere hele brugeroplevelsen og implementere funktioner, der tidligere var umulige eller meget besværlige at få på plads - f.eks. evalueringsfeltet til "socialt mål", som man tænkte burde været simpelt, men som bare altid har manglet. Det betyder også at jeg meget hurtigt kan tilføje nye funktioner og forbedringer løbende, da jeg har fuld kontrol med hele systemet.`,
+Sammenlignet med den tidligere lokalt installerede version får du nu et markant stærkere værktøj med bedre overblik, flere muligheder og en mere fleksibel arbejdsproces. I at med jeg selv har udviklet både backend og frontend, har jeg kunnet optimere hele brugeroplevelsen og implementere funktioner, der tidligere var umulige eller meget besværlige at få på plads. Det betyder også at jeg meget hurtigt kan tilføje nye funktioner og forbedringer løbende, da jeg har fuld kontrol med hele systemet.`,
     author: 'KESO',
     date: '22-03-2026',
     featured: true,

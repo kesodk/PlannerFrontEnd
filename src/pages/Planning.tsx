@@ -449,7 +449,7 @@ export function Planning() {
     <Box h={colHeight} style={{ display: 'flex', gap: 'var(--mantine-spacing-sm)', overflow: 'hidden' }}>
 
       {/* ══ LEFT COLUMN ══ */}
-      <Box w={240} style={{ flexShrink: 0 }}>
+      <Box w={224} style={{ flexShrink: 0 }}>
         <FollowedClassStudentSidebar
           selectedClassId={selectedClassId}
           selectedStudentId={null}

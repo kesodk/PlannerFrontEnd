@@ -1,0 +1,42 @@
+.brandButton {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--mantine-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.brandButton:hover {
+  background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  border-color: light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-4));
+}
+
+.brandStack {
+  pointer-events: none;
+}
+
+.versionText {
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+}
+
+.userButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--mantine-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.userButton:hover {
+  background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  border-color: light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-4));
+}
